@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: the workflow only reads the code.
+permissions:
+  contents: read
+
+# A new push to the same branch or PR supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 24
+  # npm audit and funding messages are noise in CI logs.
+  npm_config_audit: false
+  npm_config_fund: false
+
+jobs:
+  quality:
+    name: Typecheck, unit tests and build (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lowest supported version (package.json engines) and the current LTS.
+        node: [22, 24]
+    steps:
+      # Actions are pinned to full commit SHAs: a tag can be moved, a SHA cannot.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck (strict, every workspace)
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build micro frontends and shell
+        run: npm run build:web
+
+  smoke:
+    name: End-to-end smoke test (Postgres + Redis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quality
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: plateia
+          POSTGRES_PASSWORD: plateia
+          POSTGRES_DB: plateia
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U plateia -d plateia"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      # Throwaway credentials of the CI service container, not a secret.
+      DATABASE_URL: postgres://plateia:plateia@localhost:5432/plateia
+      REDIS_URL: redis://localhost:6379
+      OTEL_SDK_DISABLED: "true"
+      PAYMENT_DELAY_MS: "300"
+      LOG_LEVEL: warn
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Start services
+        run: |
+          mkdir -p logs
+          for service in catalog booking payment; do
+            npm start -w "@plateia/$service-service" > "logs/$service.log" 2>&1 &
+          done
+
+      - name: Wait until every service is ready
+        run: |
+          for port in 3001 3002 3003; do
+            for attempt in $(seq 1 60); do
+              curl -fs "http://localhost:$port/health/ready" > /dev/null && break
+              if [ "$attempt" = 60 ]; then echo "Service on port $port never became ready"; exit 1; fi
+              sleep 1
+            done
+            echo "port $port ready"
+          done
+
+      - name: Smoke test the purchase flow
+        run: npm run smoke
+
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: service-logs
+          path: logs/
+          retention-days: 7

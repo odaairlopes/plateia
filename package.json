@@ -20,14 +20,16 @@
     "dev:services": "concurrently -k -n catalog,booking,payment -c blue,magenta,yellow \"npm run dev -w @plateia/catalog-service\" \"npm run dev -w @plateia/booking-service\" \"npm run dev -w @plateia/payment-service\"",
     "dev:web": "concurrently -k -n mfe-catalog,mfe-booking,shell -c cyan,green,white \"npm run dev -w @plateia/mfe-catalog\" \"npm run dev -w @plateia/mfe-booking\" \"npm run dev -w @plateia/shell\"",
     "build:web": "npm run build -w @plateia/mfe-catalog -w @plateia/mfe-booking -w @plateia/shell",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "vitest run"
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "concurrently": "^10.0.7",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "@plateia/contracts": "*"
   }
 }

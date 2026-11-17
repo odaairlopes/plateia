@@ -139,6 +139,7 @@ Para ver a concorrência, abra o mesmo evento em duas janelas (uma delas anônim
 ```bash
 npm test           # testes de domínio e casos de uso
 npm run typecheck  # TypeScript estrito em todos os workspaces
+npm run smoke      # fluxo de compra de ponta a ponta contra os serviços rodando
 ```
 
 ## Observabilidade
@@ -167,6 +168,17 @@ Decisões: as métricas de negócio são aplicadas como decoradores na raiz de c
 
 As regras de negócio dependem de portas (interfaces), não de Postgres ou Redis, então os casos de uso são testados com implementações em memória: disputa pelo mesmo assento, expiração da reserva, idempotência do checkout, evento de pagamento duplicado, compensação quando o assento é vendido para outra pessoa e pagamento que chega depois do pedido expirar.
 
+O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não alcançam: Postgres e Redis reais, os scripts Lua das reservas, o relay do outbox e a saga atravessando dois serviços. Ele compra assentos, confirma que um segundo visitante não consegue reservá-los, que o checkout repetido não duplica o pedido, que o pagamento recusado libera o assento e que um pedido não aparece para outra sessão.
+
+### Integração contínua
+
+O GitHub Actions roda em todo push e pull request:
+
+1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e build dos micro frontends.
+2. **Fumaça**, depois da qualidade: sobe Postgres e Redis como contêineres de serviço, inicia os três serviços e roda `npm run smoke`. Se falhar, os logs dos serviços ficam disponíveis como artefato.
+
+O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry e os singletons compartilhados entre os micro frontends).
+
 ## Acessibilidade
 
 - Mapa de assentos navegável por teclado (setas, Home/End) com *roving tabindex*: o mapa é uma única parada de Tab.
@@ -177,7 +189,7 @@ As regras de negócio dependem de portas (interfaces), não de Postgres ou Redis
 ## Próximos passos
 
 - [ ] Testes de integração com Testcontainers e E2E com Playwright (incluindo corrida entre dois navegadores)
-- [ ] Dockerfiles multi-stage e pipeline no GitHub Actions
+- [ ] Dockerfiles multi-stage e publicação das imagens pelo CI
 - [ ] Autenticação e área "meus ingressos"
 - [ ] Replicar o catálogo no booking por eventos, removendo a chamada síncrona
 - [ ] Traces a partir do navegador e alertas no Prometheus

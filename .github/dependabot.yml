@@ -1,0 +1,35 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # These packages are released together and pin each other's versions
+      # (@fastify/otel peers on a single @opentelemetry/api minor), so they
+      # must move in one PR or the install breaks.
+      opentelemetry:
+        patterns: ["@opentelemetry/*", "@fastify/otel"]
+      # Shared singletons across the shell and the micro frontends: a version
+      # skew between them is a runtime bug, so they are upgraded together.
+      federated-runtime:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react*"
+          - react-router-dom
+          - "@mui/*"
+          - "@emotion/*"
+          - "@tanstack/react-query"
+          - i18next
+          - react-i18next
+          - "@module-federation/*"
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

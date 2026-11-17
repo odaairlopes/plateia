@@ -139,6 +139,7 @@ To see the concurrency, open the same event in two windows (one of them private)
 ```bash
 npm test           # domain and use case tests
 npm run typecheck  # strict TypeScript across all workspaces
+npm run smoke      # end-to-end purchase flow against the running services
 ```
 
 ## Observability
@@ -167,6 +168,17 @@ Decisions: business metrics are applied as decorators at the composition root, s
 
 The business rules depend on ports (interfaces), not on Postgres or Redis, so the use cases are tested with in-memory implementations: two visitors racing for the same seat, hold expiry, checkout idempotency, a duplicated payment event, compensation when the seat is sold to someone else, and a payment that arrives after the order expired.
 
+The smoke test (`scripts/smoke.ts`) covers what unit tests cannot reach: real Postgres and Redis, the Lua hold scripts, the outbox relay and the saga across two services. It buys seats and checks that a second visitor cannot hold them, that a repeated checkout does not duplicate the order, that a declined payment releases the seat and that an order is not visible to another session.
+
+### Continuous integration
+
+GitHub Actions runs on every push and pull request:
+
+1. **Quality**, on Node 22 (lowest supported) and 24 (LTS): strict typecheck, unit tests and the micro frontend build.
+2. **Smoke**, after quality: starts Postgres and Redis as service containers, boots the three services and runs `npm run smoke`. On failure, the service logs are kept as an artifact.
+
+The workflow has read-only permissions, cancels superseded runs on the same branch and pins actions to commit SHAs (a tag can be moved; a SHA cannot). Dependabot updates dependencies and actions weekly, grouping packages that must move together (OpenTelemetry, and the singletons shared across micro frontends).
+
 ## Accessibility
 
 - Keyboard-navigable seat map (arrows, Home/End) with a roving tabindex: the map is a single Tab stop.
@@ -177,7 +189,7 @@ The business rules depend on ports (interfaces), not on Postgres or Redis, so th
 ## Next steps
 
 - [ ] Integration tests with Testcontainers and E2E with Playwright (including a race between two browsers)
-- [ ] Multi-stage Dockerfiles and a GitHub Actions pipeline
+- [ ] Multi-stage Dockerfiles and image publishing from CI
 - [ ] Authentication and a "my tickets" area
 - [ ] Replicate the catalog into booking through events, removing the synchronous call
 - [ ] Traces starting in the browser and Prometheus alerts
