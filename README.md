@@ -1,9 +1,13 @@
 # Plateia
 
+[![CI](https://github.com/odaairlopes/plateia/actions/workflows/ci.yml/badge.svg)](https://github.com/odaairlopes/plateia/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 > Plataforma de venda de ingressos com escolha de assentos em tempo real.
 > Micro frontends com Module Federation, microsserviços Fastify orientados a eventos, Postgres e Redis.
 
 🇺🇸 [Read in English](./README.en.md)
+
+![Mapa de assentos com reserva em andamento: assentos vendidos, reservados por outras pessoas e o contador da reserva](docs/images/seat-map-pt.png)
 
 Projeto de portfólio. Os eventos são fictícios e o pagamento é simulado: nenhum dado de cartão existe em parte alguma do sistema.
 
@@ -15,6 +19,15 @@ Vender ingressos parece um CRUD até duas pessoas clicarem no mesmo assento no m
 - **O assento fica reservado enquanto a pessoa paga**, e volta sozinho para a venda se ela desistir.
 - **O pagamento é assíncrono** e pode falhar, atrasar ou chegar duplicado sem deixar o pedido em estado inconsistente.
 - **Todo mundo vê o mapa atualizado** sem recarregar a página.
+
+## Telas
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/events-pt.png" alt="Lista de eventos" width="100%"></td>
+    <td width="50%"><img src="docs/images/ticket-pt.png" alt="Pedido confirmado com o ingresso emitido" width="100%"></td>
+  </tr>
+</table>
 
 ## Arquitetura
 
@@ -154,6 +167,12 @@ npm run obs:up   # Collector, Jaeger, Prometheus e Grafana
 | http://localhost:16686 | Jaeger: traces distribuídos |
 | http://localhost:9090 | Prometheus |
 
+![Dashboard do Grafana com o fluxo de negócio e os sinais HTTP](docs/images/grafana.png)
+
+![Trace no Jaeger de uma compra atravessando os serviços de reservas e de pagamento](docs/images/jaeger-trace.png)
+
+*Um trace de compra no Jaeger: 37 spans em dois serviços, da requisição HTTP à emissão dos ingressos, passando pela fila.*
+
 Os serviços exportam tudo por OTLP para o **OpenTelemetry Collector**, que encaminha traces ao Jaeger e expõe métricas ao Prometheus. O serviço não sabe para onde a telemetria vai; trocar o destino é mudar a configuração do Collector, sem novo deploy. Sem a pilha no ar, a exportação falha em silêncio e nada muda para a aplicação.
 
 **Um trace por compra, atravessando serviços e fila.** O contexto de trace (W3C `traceparent`) é gravado junto com o evento no outbox e viaja dentro da mensagem no Redis Streams. Assim, o `POST /orders`, a publicação do `order.created`, o processamento no serviço de pagamento, a volta do `payment.succeeded` e a emissão dos ingressos aparecem como um único trace, mesmo com o relay do outbox rodando fora de qualquer requisição.
@@ -194,3 +213,7 @@ O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo
 - [ ] Replicar o catálogo no booking por eventos, removendo a chamada síncrona
 - [ ] Traces a partir do navegador e alertas no Prometheus
 - [ ] Fila de espera virtual para aberturas de venda com alta demanda
+
+## Licença
+
+[MIT](./LICENSE).

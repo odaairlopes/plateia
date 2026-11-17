@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Event-driven ticketing platform with micro frontends (Module Federation) and Fastify microservices.",
+  "license": "MIT",
   "engines": {
     "node": ">=22"
   },

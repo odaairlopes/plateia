@@ -1,9 +1,13 @@
 # Plateia
 
+[![CI](https://github.com/odaairlopes/plateia/actions/workflows/ci.yml/badge.svg)](https://github.com/odaairlopes/plateia/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
 > Ticketing platform with real-time seat selection.
 > Micro frontends with Module Federation, event-driven Fastify microservices, Postgres and Redis.
 
 🇧🇷 [Leia em português](./README.md)
+
+![Seat map with a hold in progress: sold seats, seats held by other visitors and the hold countdown](docs/images/seat-map-en.png)
 
 Portfolio project. The events are fictional and the payment is simulated: no card data exists anywhere in the system.
 
@@ -15,6 +19,15 @@ Selling tickets looks like CRUD until two people click the same seat in the same
 - **The seat stays held while the visitor pays**, and goes back on sale by itself if they give up.
 - **Payment is asynchronous** and may fail, arrive late or arrive twice without leaving the order inconsistent.
 - **Everyone sees an up-to-date map** without reloading the page.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/events-en.png" alt="Event list" width="100%"></td>
+    <td width="50%"><img src="docs/images/ticket-en.png" alt="Confirmed order with the issued ticket" width="100%"></td>
+  </tr>
+</table>
 
 ## Architecture
 
@@ -154,6 +167,12 @@ npm run obs:up   # Collector, Jaeger, Prometheus and Grafana
 | http://localhost:16686 | Jaeger: distributed traces |
 | http://localhost:9090 | Prometheus |
 
+![Grafana dashboard with the business flow and HTTP signals](docs/images/grafana.png)
+
+![Jaeger trace of one purchase across the booking and payment services](docs/images/jaeger-trace.png)
+
+*One purchase trace in Jaeger: 37 spans across two services, from the HTTP request to the issued tickets, through the queue.*
+
 Services export everything over OTLP to the **OpenTelemetry Collector**, which forwards traces to Jaeger and exposes metrics to Prometheus. A service does not know where its telemetry goes; changing the destination is a Collector configuration change, with no redeploy. With the stack down, exports fail silently and nothing changes for the application.
 
 **One trace per purchase, across services and the queue.** The trace context (W3C `traceparent`) is stored next to the event in the outbox and travels inside the Redis Streams message. So `POST /orders`, the publishing of `order.created`, its processing in the payment service, the `payment.succeeded` coming back and the tickets being issued all show up as a single trace, even though the outbox relay runs outside any request.
@@ -194,3 +213,7 @@ The workflow has read-only permissions, cancels superseded runs on the same bran
 - [ ] Replicate the catalog into booking through events, removing the synchronous call
 - [ ] Traces starting in the browser and Prometheus alerts
 - [ ] Virtual waiting room for high-demand sale openings
+
+## License
+
+[MIT](./LICENSE).

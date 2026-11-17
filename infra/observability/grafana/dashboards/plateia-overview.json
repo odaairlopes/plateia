@@ -456,7 +456,7 @@
       "id": 10,
       "type": "timeseries",
       "title": "Latency p95 by route",
-      "description": "Slowest routes first. Health probes are excluded from telemetry.",
+      "description": "Slowest routes first. Health probes are excluded from telemetry, and the SSE stream is excluded here because a connection lasts as long as the visitor stays on the page.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -473,7 +473,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, service_name, http_route) (rate(http_server_request_duration_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le, service_name, http_route) (rate(http_server_request_duration_seconds_bucket{http_route!~\".*/stream\"}[$__rate_interval])))",
           "legendFormat": "{{service_name}} {{http_route}}",
           "refId": "A"
         }
