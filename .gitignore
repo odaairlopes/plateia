@@ -9,3 +9,4 @@ coverage/
 .vite/
 .__mf__temp/
 .DS_Store
+.preview/

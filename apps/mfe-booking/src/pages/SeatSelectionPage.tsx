@@ -42,7 +42,7 @@ export default function SeatSelectionPage() {
   const { eventId = '' } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation(NAMESPACE);
-  const { locale } = useLocale();
+  const { locale, language } = useLocale();
 
   const event = useQuery(eventQuery(eventId));
   const seatMap = useSeatMap(eventId);
@@ -120,6 +120,7 @@ export default function SeatSelectionPage() {
         holdId: hold?.holdId ?? '',
         customer: { name: values.name, email: values.email },
         paymentScenario: values.paymentScenario,
+        locale: language,
       }),
     onSuccess: (order) => {
       clear(); // the hold now belongs to the order

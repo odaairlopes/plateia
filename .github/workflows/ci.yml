@@ -54,7 +54,7 @@ jobs:
         run: npm run build:web
 
   smoke:
-    name: End-to-end smoke test (Postgres + Redis)
+    name: End-to-end smoke test (Postgres + Redis + SMTP)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: quality
@@ -74,6 +74,13 @@ jobs:
         ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      # Captures the confirmation emails; the smoke test reads them back over its API.
+      mailpit:
+        image: axllent/mailpit:v1.34.0
+        ports: ["1025:1025", "8025:8025"]
+        options: >-
+          --health-cmd "/mailpit readyz"
           --health-interval 3s --health-timeout 3s --health-retries 20
     env:
       # Throwaway credentials of the CI service container, not a secret.
@@ -97,13 +104,13 @@ jobs:
       - name: Start services
         run: |
           mkdir -p logs
-          for service in catalog booking payment; do
+          for service in catalog booking payment notification; do
             npm start -w "@plateia/$service-service" > "logs/$service.log" 2>&1 &
           done
 
       - name: Wait until every service is ready
         run: |
-          for port in 3001 3002 3003; do
+          for port in 3001 3002 3003 3004; do
             for attempt in $(seq 1 60); do
               curl -fs "http://localhost:$port/health/ready" > /dev/null && break
               if [ "$attempt" = 60 ]; then echo "Service on port $port never became ready"; exit 1; fi

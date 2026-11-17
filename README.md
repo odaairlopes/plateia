@@ -48,14 +48,19 @@ flowchart LR
     Catalog["catalog-service\nFastify"]
     Booking["booking-service\nFastify"]
     Payment["payment-service\nFastify"]
+    Notification["notification-service\nFastify + React Email"]
   end
 
   Booking -->|"HTTP (cache + stale-if-error)"| Catalog
   Booking <-->|"Redis Streams\n(eventos de domínio)"| Payment
+  Booking -.->|"order.confirmed"| Notification
+  Notification -->|HTTP| Catalog
+  Notification -->|SMTP| Mail[("Mailpit (local)\nou provedor SMTP")]
 
   Catalog --> PG[("Postgres\nschema por serviço")]
   Booking --> PG
   Payment --> PG
+  Notification --> PG
   Booking --> Redis[("Redis\nholds, streams, pub/sub")]
 ```
 
@@ -67,6 +72,7 @@ flowchart LR
 | `services/catalog` | Modelo de leitura de eventos e setores. |
 | `services/booking` | Reservas temporárias (Redis), pedidos e ingressos (Postgres), saga de checkout. |
 | `services/payment` | Provedor de pagamento simulado, guiado apenas por eventos. |
+| `services/notification` | Envia os ingressos por e-mail quando o pedido é confirmado. |
 | `packages/contracts` | Schemas Zod das APIs e dos eventos. Uma única fonte de verdade para back e front. |
 | `packages/platform` | Base dos serviços: fábrica HTTP, barramento de eventos, outbox, migrações. |
 | `packages/web-kit` | Base do front: tema, providers, i18n, cliente HTTP. |
@@ -98,6 +104,8 @@ sequenceDiagram
 ```
 
 Se o pagamento for recusado, o pedido é cancelado e os assentos voltam à venda. Se a reserva expirar durante o pagamento e outra pessoa comprar o assento, o pedido é cancelado e um `order.cancelled` dispara o estorno no serviço de pagamento (ação compensatória da saga).
+
+Com o pedido confirmado, o serviço de notificação envia os ingressos por e-mail, com QR code, no idioma em que a pessoa usou o site.
 
 ## Decisões de arquitetura e trade-offs
 
@@ -146,6 +154,7 @@ Abra http://localhost:5173. As migrações e os dados de exemplo são aplicados 
 | http://localhost:5174 · 5175 | Micro frontends em modo standalone |
 | http://localhost:3001/docs | OpenAPI do catálogo |
 | http://localhost:3002/docs | OpenAPI de reservas |
+| http://localhost:8025 | Mailpit: caixa de entrada local com todos os e-mails enviados |
 
 Para ver a concorrência, abra o mesmo evento em duas janelas (uma delas anônima): o assento reservado em uma aparece bloqueado na outra em tempo real.
 
@@ -183,18 +192,41 @@ Os serviços exportam tudo por OTLP para o **OpenTelemetry Collector**, que enca
 
 Decisões: as métricas de negócio são aplicadas como decoradores na raiz de composição, então a camada de aplicação e seus testes não conhecem telemetria. Consultas de laços de fundo (relay do outbox, leitura da stream) não geram spans, para não afogar os traces reais. Detectores de host e processo ficam desligados, evitando rótulos de alta cardinalidade e dados da máquina nas métricas.
 
+## E-mail de confirmação
+
+![E-mail de confirmação com os dados do show, os assentos, o total e o QR code](docs/images/email-pt.png)
+
+Quando o pedido é confirmado, o `notification-service` consome o evento `order.confirmed` e envia os ingressos por e-mail.
+
+- **Template em React** com [React Email](https://react.email): layout em tabelas, estilos inline, cores sólidas e fontes do sistema, que é o que os clientes de e-mail (Gmail, Outlook, Apple Mail) realmente suportam. Vai junto uma versão em texto puro.
+- **QR code como anexo inline** (`cid:`): o Gmail remove imagens em data URI, e uma imagem hospedada exigiria um servidor público.
+- **No idioma do site:** o pedido guarda o idioma em que a pessoa comprou, e datas e horários saem no fuso do local do show, seja qual for o fuso do servidor.
+- **Sem e-mail duplicado:** o barramento entrega pelo menos uma vez, então cada envio é registrado com a chave `(pedido, tipo)`. Um evento reentregue não envia de novo. O registro não guarda o endereço de e-mail.
+- **Sem reenviar o passado:** um consumidor novo de um evento com efeito externo começa do fim da stream (`startFrom: 'latest'`). Começar do início mandaria e-mail para todos os clientes antigos.
+- **Dados levados no evento:** o `order.confirmed` carrega nome, e-mail e idioma, então a notificação não precisa chamar o serviço de reservas. Em troca, dado pessoal passa pelo barramento, e a stream precisa ser tratada como armazenamento sensível.
+
+### Onde os e-mails vão parar
+
+Em desenvolvimento, nenhum e-mail sai da máquina: o [Mailpit](https://mailpit.axllent.org) recebe tudo por SMTP e mostra em http://localhost:8025. Para ver o template sem SMTP nem banco:
+
+```bash
+npm run preview:email -w @plateia/notification-service
+```
+
+Para entregar de verdade, basta apontar o SMTP para um provedor. O [Brevo](https://www.brevo.com), por exemplo, tem plano gratuito de 300 e-mails por dia. Copie `.env.example` para `.env` e preencha `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `MAIL_FROM` (um remetente verificado no provedor). O código não muda.
+
 ## Testes
 
 As regras de negócio dependem de portas (interfaces), não de Postgres ou Redis, então os casos de uso são testados com implementações em memória: disputa pelo mesmo assento, expiração da reserva, idempotência do checkout, evento de pagamento duplicado, compensação quando o assento é vendido para outra pessoa e pagamento que chega depois do pedido expirar.
 
-O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não alcançam: Postgres e Redis reais, os scripts Lua das reservas, o relay do outbox e a saga atravessando dois serviços. Ele compra assentos, confirma que um segundo visitante não consegue reservá-los, que o checkout repetido não duplica o pedido, que o pagamento recusado libera o assento e que um pedido não aparece para outra sessão.
+O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não alcançam: Postgres e Redis reais, os scripts Lua das reservas, o relay do outbox e a saga atravessando dois serviços. Ele compra assentos, confirma que um segundo visitante não consegue reservá-los, que o checkout repetido não duplica o pedido, que o pagamento recusado libera o assento que um pedido não aparece para outra sessão e que o e-mail com os ingressos chega, com o código do pedido e o QR code.
 
 ### Integração contínua
 
 O GitHub Actions roda em todo push e pull request:
 
 1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e build dos micro frontends.
-2. **Fumaça**, depois da qualidade: sobe Postgres e Redis como contêineres de serviço, inicia os três serviços e roda `npm run smoke`. Se falhar, os logs dos serviços ficam disponíveis como artefato.
+2. **Fumaça**, depois da qualidade: sobe Postgres, Redis e Mailpit como contêineres de serviço, inicia os quatro serviços e roda `npm run smoke`. Se falhar, os logs dos serviços ficam disponíveis como artefato.
 
 O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry e os singletons compartilhados entre os micro frontends).
 
@@ -213,6 +245,7 @@ O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo
 - [ ] Replicar o catálogo no booking por eventos, removendo a chamada síncrona
 - [ ] Traces a partir do navegador e alertas no Prometheus
 - [ ] Fila de espera virtual para aberturas de venda com alta demanda
+- [ ] Antes de usar um provedor de e-mail real em produção: limite de envios por destinatário e confirmação do endereço, para o checkout não virar uma forma de mandar spam
 
 ## Licença
 

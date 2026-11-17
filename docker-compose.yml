@@ -32,6 +32,19 @@ services:
       timeout: 3s
       retries: 20
 
+  # Local SMTP server that captures every email instead of delivering it.
+  # Inbox UI: http://localhost:8025 . Services send to it by default.
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   # --- Observability stack: `npm run obs:up` (compose profile "observability") ---
   # Services export OTLP to the collector, which fans out to Jaeger (traces)
   # and Prometheus (metrics). Grafana reads both. Everything binds to

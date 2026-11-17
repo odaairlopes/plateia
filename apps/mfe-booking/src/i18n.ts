@@ -78,6 +78,7 @@ const pt = {
     pendingTitle: 'Processando seu pagamento…',
     pendingBody: 'Seus assentos continuam reservados enquanto aguardamos a confirmação.',
     confirmedTitle: 'Tudo certo, {{name}}! Seus lugares estão garantidos.',
+    emailSent: 'Enviamos os ingressos para o seu e-mail. Confira também a caixa de spam.',
     cancelledTitle: 'O pedido não foi concluído',
     reason: {
       payment_declined: 'O pagamento foi recusado. Os assentos voltaram a ficar disponíveis.',
@@ -169,6 +170,7 @@ const en: typeof pt = {
     pendingTitle: 'Processing your payment…',
     pendingBody: 'Your seats stay held while we wait for the confirmation.',
     confirmedTitle: 'All set, {{name}}! Your seats are secured.',
+    emailSent: 'Your tickets are on their way to your inbox. Check the spam folder too.',
     cancelledTitle: 'The order was not completed',
     reason: {
       payment_declined: 'The payment was declined. The seats are available again.',

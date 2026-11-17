@@ -1,3 +1,3 @@
 import { startTelemetry } from '@plateia/platform/telemetry';
 
-startTelemetry('booking-service');
+await startTelemetry('booking-service');

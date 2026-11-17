@@ -1,4 +1,4 @@
-import type { CancelReason, DomainEvent, OrderStatus } from '@plateia/contracts';
+import type { CancelReason, DomainEvent, Locale, OrderStatus } from '@plateia/contracts';
 import { enqueueOutbox, withTransaction, type Pool, type Queryable } from '@plateia/platform';
 import type { OrderRepository, OrderTransaction } from '../application/ports';
 import type { Order } from '../domain/order';
@@ -14,13 +14,14 @@ interface OrderRow {
   total_cents: number;
   customer_name: string;
   customer_email: string;
+  locale: Locale;
   status: OrderStatus;
   cancel_reason: CancelReason | null;
   created_at: Date;
 }
 
 const COLUMNS =
-  'id, hold_id, session_id, event_id, seat_ids, total_cents, customer_name, customer_email, status, cancel_reason, created_at';
+  'id, hold_id, session_id, event_id, seat_ids, total_cents, customer_name, customer_email, locale, status, cancel_reason, created_at';
 
 function toOrder(row: OrderRow): Order {
   return {
@@ -32,6 +33,7 @@ function toOrder(row: OrderRow): Order {
     totalCents: row.total_cents,
     customerName: row.customer_name,
     customerEmail: row.customer_email,
+    locale: row.locale,
     status: row.status,
     cancelReason: row.cancel_reason,
     createdAt: row.created_at,
@@ -77,8 +79,8 @@ export function createPgOrderRepository(pool: Pool): OrderRepository {
       return withTransaction(pool, async (client) => {
         const inserted = await client.query<OrderRow>(
           `INSERT INTO booking.orders
-             (id, hold_id, session_id, event_id, seat_ids, total_cents, customer_name, customer_email, status, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             (id, hold_id, session_id, event_id, seat_ids, total_cents, customer_name, customer_email, locale, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            ON CONFLICT (hold_id) DO NOTHING
            RETURNING ${COLUMNS}`,
           [
@@ -90,6 +92,7 @@ export function createPgOrderRepository(pool: Pool): OrderRepository {
             order.totalCents,
             order.customerName,
             order.customerEmail,
+            order.locale,
             order.status,
             order.createdAt,
           ],

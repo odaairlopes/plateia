@@ -1,3 +1,3 @@
 import { startTelemetry } from '@plateia/platform/telemetry';
 
-startTelemetry('catalog-service');
+await startTelemetry('catalog-service');

@@ -158,6 +158,7 @@ export default function OrderPage() {
             <Typography variant="h1" sx={{ fontSize: 'clamp(1.6rem, 3.4vw, 2.4rem)' }}>
               {t('order.confirmedTitle', { name: order.customerName.split(' ')[0] })}
             </Typography>
+            <Typography color="text.secondary">{t('order.emailSent')}</Typography>
             <Ticket order={order} />
             <Button component={RouterLink} to="/" variant="outlined" sx={{ alignSelf: 'flex-start' }}>
               {t('order.backToEvents')}

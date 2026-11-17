@@ -50,7 +50,14 @@ export function makeSettleOrder(deps: SettleOrderDeps) {
           const confirmed = confirmOrder(order);
           await tx.save(confirmed);
           await tx.enqueue(
-            createEvent('order.confirmed', { orderId, eventId: order.eventId, seatIds: order.seatIds }),
+            createEvent('order.confirmed', {
+              orderId,
+              eventId: order.eventId,
+              seatIds: order.seatIds,
+              totalCents: order.totalCents,
+              customer: { name: order.customerName, email: order.customerEmail },
+              locale: order.locale,
+            }),
           );
           return confirmed;
         }

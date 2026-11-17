@@ -3,6 +3,9 @@ import { MAX_SEATS_PER_HOLD } from './seat';
 
 /** HTTP contracts shared by services (runtime validation) and web apps (types). */
 
+export const localeSchema = z.enum(['pt', 'en']);
+export type Locale = z.infer<typeof localeSchema>;
+
 export const localizedTextSchema = z.object({ pt: z.string(), en: z.string() });
 export type LocalizedText = z.infer<typeof localizedTextSchema>;
 
@@ -77,6 +80,8 @@ export const createOrderSchema = z.object({
     email: z.email().max(254),
   }),
   paymentScenario: paymentScenarioSchema,
+  /** Language of the confirmation email. */
+  locale: localeSchema.default('pt'),
 });
 export type CreateOrderRequest = z.infer<typeof createOrderSchema>;
 

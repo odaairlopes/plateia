@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { cancelReasonSchema, paymentScenarioSchema } from './api';
+import { cancelReasonSchema, localeSchema, paymentScenarioSchema } from './api';
 
 /**
  * Domain events exchanged between services over the event bus.
@@ -40,7 +40,20 @@ export const paymentFailedSchema = z.object({
 export const orderConfirmedSchema = z.object({
   ...envelope,
   type: z.literal('order.confirmed'),
-  payload: z.object({ orderId: z.uuid(), eventId: z.string(), seatIds: z.array(z.string()) }),
+  payload: z.object({
+    orderId: z.uuid(),
+    eventId: z.string(),
+    seatIds: z.array(z.string()),
+    totalCents: z.number().int().nonnegative(),
+    /**
+     * Event-carried state: consumers such as notifications get what they need
+     * from the event itself instead of calling back into booking. The price is
+     * that personal data travels on the bus, so the stream must be treated as
+     * sensitive storage (access control, retention).
+     */
+    customer: z.object({ name: z.string(), email: z.email() }),
+    locale: localeSchema,
+  }),
 });
 
 export const orderCancelledSchema = z.object({

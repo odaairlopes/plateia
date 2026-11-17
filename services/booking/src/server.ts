@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   baseEnvSchema,
   buildApp,
+  createHttpCatalogClient,
   createPool,
   createRedisEventBus,
   loadEnv,
@@ -19,7 +20,6 @@ import { makeHoldSeats, makeReleaseHold } from './application/hold-seats';
 import type { Clock } from './application/ports';
 import { makeSettleOrder } from './application/settle-order';
 import { registerBookingRoutes } from './http/routes';
-import { createHttpCatalogGateway } from './infra/http-catalog-gateway';
 import { countHolds, countOrders, seatStreamGauge } from './infra/metrics';
 import { createPgOrderRepository } from './infra/pg-order-repository';
 import { createRedisHoldStore } from './infra/redis-hold-store';
@@ -68,7 +68,7 @@ registerBookingRoutes(app, {
   streamGauge: seatStreamGauge,
   holdSeats: countHolds(
     makeHoldSeats({
-      catalog: createHttpCatalogGateway(env.CATALOG_URL),
+      catalog: createHttpCatalogClient(env.CATALOG_URL),
       holds,
       orders,
       notifier: broadcaster,

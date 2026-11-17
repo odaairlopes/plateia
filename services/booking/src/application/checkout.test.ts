@@ -106,7 +106,7 @@ describe('holding seats', () => {
 describe('checkout saga', () => {
   async function pendingOrder(sessionId = ALICE, seatIds = ['vip:1:1']) {
     const hold = await ctx.holdSeats({ sessionId, eventId: 'show', seatIds });
-    return ctx.createOrder({ sessionId, holdId: hold.holdId, customer, paymentScenario: 'approve' });
+    return ctx.createOrder({ sessionId, holdId: hold.holdId, customer, paymentScenario: 'approve', locale: 'pt' });
   }
 
   it('creates a pending order and announces it', async () => {
@@ -117,7 +117,7 @@ describe('checkout saga', () => {
 
   it('is idempotent: retrying the same hold returns the same order', async () => {
     const hold = await ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:1:1'] });
-    const input = { sessionId: ALICE, holdId: hold.holdId, customer, paymentScenario: 'approve' as const };
+    const input = { sessionId: ALICE, holdId: hold.holdId, customer, paymentScenario: 'approve' as const, locale: 'pt' as const };
     const first = await ctx.createOrder(input);
     const second = await ctx.createOrder(input);
     expect(second.id).toBe(first.id);
@@ -126,7 +126,7 @@ describe('checkout saga', () => {
 
   it("refuses to check out someone else's or an expired hold", async () => {
     const hold = await ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:1:1'] });
-    const input = { holdId: hold.holdId, customer, paymentScenario: 'approve' as const };
+    const input = { holdId: hold.holdId, customer, paymentScenario: 'approve' as const, locale: 'pt' as const };
     await expect(ctx.createOrder({ ...input, sessionId: BRUNO })).rejects.toMatchObject({ code: 'HOLD_EXPIRED' });
     ctx.clock.advance(HOLD_TTL + 1);
     await expect(ctx.createOrder({ ...input, sessionId: ALICE })).rejects.toMatchObject({ code: 'HOLD_EXPIRED' });
@@ -140,6 +140,11 @@ describe('checkout saga', () => {
     expect(await ctx.orders.findSoldSeats('show')).toEqual(['vip:1:1']);
     expect(await ctx.holds.listHeldSeats('show')).toEqual([]);
     expect(ctx.orders.publishedTypes()).toEqual(['order.created', 'order.confirmed']);
+    // Notifications need everything to write the email without calling back.
+    expect(ctx.orders.published.at(-1)).toMatchObject({
+      type: 'order.confirmed',
+      payload: { totalCents: 20000, customer, locale: 'pt', seatIds: ['vip:1:1'] },
+    });
     await expect(
       ctx.holdSeats({ sessionId: BRUNO, eventId: 'show', seatIds: ['vip:1:1'] }),
     ).rejects.toMatchObject({ code: 'SEATS_UNAVAILABLE' });

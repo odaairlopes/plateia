@@ -1,6 +1,9 @@
 import { eventDetailSchema, type EventDetail } from '@plateia/contracts';
-import { DomainError } from '@plateia/platform';
-import type { CatalogGateway } from '../application/ports';
+import { DomainError } from './errors';
+
+export interface CatalogClient {
+  getEvent(eventId: string): Promise<EventDetail | null>;
+}
 
 interface CacheEntry {
   event: EventDetail | null;
@@ -12,15 +15,15 @@ const TIMEOUT_MS = 2_000;
 const MAX_ENTRIES = 500;
 
 /**
- * Booking needs prices and layouts that the catalog owns. The call is
+ * Several services need data the catalog owns (prices, layouts, dates). The call is
  * synchronous, so it is protected: a short timeout, a small cache, and
  * serving the last known answer when the catalog is down (stale-if-error),
- * which keeps checkout working through a catalog outage.
+ * which keeps checkout (and notifications) working through a catalog outage.
  *
- * Trade-off: a price change takes up to 30s to reach booking. The next step
+ * Trade-off: a change takes up to 30s to reach the caller. The next step
  * would be replicating the catalog through events instead of calling it.
  */
-export function createHttpCatalogGateway(baseUrl: string): CatalogGateway {
+export function createHttpCatalogClient(baseUrl: string): CatalogClient {
   const cache = new Map<string, CacheEntry>();
 
   function remember(eventId: string, event: EventDetail | null): void {

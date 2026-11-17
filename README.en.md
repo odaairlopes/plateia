@@ -48,14 +48,19 @@ flowchart LR
     Catalog["catalog-service\nFastify"]
     Booking["booking-service\nFastify"]
     Payment["payment-service\nFastify"]
+    Notification["notification-service\nFastify + React Email"]
   end
 
   Booking -->|"HTTP (cache + stale-if-error)"| Catalog
   Booking <-->|"Redis Streams\n(domain events)"| Payment
+  Booking -.->|"order.confirmed"| Notification
+  Notification -->|HTTP| Catalog
+  Notification -->|SMTP| Mail[("Mailpit (local)\nor an SMTP provider")]
 
   Catalog --> PG[("Postgres\nschema per service")]
   Booking --> PG
   Payment --> PG
+  Notification --> PG
   Booking --> Redis[("Redis\nholds, streams, pub/sub")]
 ```
 
@@ -67,6 +72,7 @@ flowchart LR
 | `services/catalog` | Read model of events and sections. |
 | `services/booking` | Temporary holds (Redis), orders and tickets (Postgres), checkout saga. |
 | `services/payment` | Simulated payment provider, driven only by events. |
+| `services/notification` | Emails the tickets once an order is confirmed. |
 | `packages/contracts` | Zod schemas for APIs and events. A single source of truth for back end and front end. |
 | `packages/platform` | Service foundation: HTTP factory, event bus, outbox, migrations. |
 | `packages/web-kit` | Front-end foundation: theme, providers, i18n, HTTP client. |
@@ -98,6 +104,8 @@ sequenceDiagram
 ```
 
 If the payment is declined, the order is cancelled and the seats go back on sale. If the hold expires during payment and someone else buys the seat, the order is cancelled and an `order.cancelled` event triggers the refund in the payment service (the saga's compensating action).
+
+Once the order is confirmed, the notification service emails the tickets, with a QR code, in the language the visitor used on the site.
 
 ## Architecture decisions and trade-offs
 
@@ -146,6 +154,7 @@ Open http://localhost:5173. Migrations and sample data are applied when the serv
 | http://localhost:5174 · 5175 | Micro frontends in standalone mode |
 | http://localhost:3001/docs | Catalog OpenAPI |
 | http://localhost:3002/docs | Booking OpenAPI |
+| http://localhost:8025 | Mailpit: local inbox with every email sent |
 
 To see the concurrency, open the same event in two windows (one of them private): a seat held in one shows up as blocked in the other in real time.
 
@@ -183,18 +192,41 @@ Services export everything over OTLP to the **OpenTelemetry Collector**, which f
 
 Decisions: business metrics are applied as decorators at the composition root, so the application layer and its tests know nothing about telemetry. Queries from background loops (outbox relay, stream reads) produce no spans, so they do not drown the real traces. Host and process detectors are off, avoiding high-cardinality labels and machine details in the metrics.
 
+## Confirmation email
+
+![Confirmation email with the show details, seats, total and QR code](docs/images/email-en.png)
+
+When an order is confirmed, `notification-service` consumes the `order.confirmed` event and emails the tickets.
+
+- **React template** with [React Email](https://react.email): table layout, inline styles, solid colors and system fonts, which is what email clients (Gmail, Outlook, Apple Mail) actually support. A plain-text version goes along.
+- **QR code as an inline attachment** (`cid:`): Gmail strips data-URI images, and a hosted image would need a public server.
+- **In the site's language:** the order stores the language the visitor bought in, and dates and times are shown in the venue's time zone, whatever the server's is.
+- **No duplicate emails:** the bus delivers at least once, so each send is logged under `(order, kind)`. A redelivered event does not send again. The log does not store the email address.
+- **No replaying the past:** a new consumer of an event with external side effects starts at the end of the stream (`startFrom: 'latest'`). Starting at the beginning would email every past customer.
+- **Data carried in the event:** `order.confirmed` carries name, email and language, so notifications never call back into booking. In exchange, personal data travels on the bus, and the stream must be treated as sensitive storage.
+
+### Where the emails go
+
+In development no email leaves the machine: [Mailpit](https://mailpit.axllent.org) receives everything over SMTP and shows it at http://localhost:8025. To see the template with no SMTP or database:
+
+```bash
+npm run preview:email -w @plateia/notification-service
+```
+
+To deliver for real, point SMTP at a provider. [Brevo](https://www.brevo.com), for example, has a free plan of 300 emails a day. Copy `.env.example` to `.env` and fill in `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM` (a sender verified with the provider). No code changes.
+
 ## Tests
 
 The business rules depend on ports (interfaces), not on Postgres or Redis, so the use cases are tested with in-memory implementations: two visitors racing for the same seat, hold expiry, checkout idempotency, a duplicated payment event, compensation when the seat is sold to someone else, and a payment that arrives after the order expired.
 
-The smoke test (`scripts/smoke.ts`) covers what unit tests cannot reach: real Postgres and Redis, the Lua hold scripts, the outbox relay and the saga across two services. It buys seats and checks that a second visitor cannot hold them, that a repeated checkout does not duplicate the order, that a declined payment releases the seat and that an order is not visible to another session.
+The smoke test (`scripts/smoke.ts`) covers what unit tests cannot reach: real Postgres and Redis, the Lua hold scripts, the outbox relay and the saga across two services. It buys seats and checks that a second visitor cannot hold them, that a repeated checkout does not duplicate the order, that a declined payment releases the seat that an order is not visible to another session and that the ticket email arrives with the order code and the QR code.
 
 ### Continuous integration
 
 GitHub Actions runs on every push and pull request:
 
 1. **Quality**, on Node 22 (lowest supported) and 24 (LTS): strict typecheck, unit tests and the micro frontend build.
-2. **Smoke**, after quality: starts Postgres and Redis as service containers, boots the three services and runs `npm run smoke`. On failure, the service logs are kept as an artifact.
+2. **Smoke**, after quality: starts Postgres, Redis and Mailpit as service containers, boots the four services and runs `npm run smoke`. On failure, the service logs are kept as an artifact.
 
 The workflow has read-only permissions, cancels superseded runs on the same branch and pins actions to commit SHAs (a tag can be moved; a SHA cannot). Dependabot updates dependencies and actions weekly, grouping packages that must move together (OpenTelemetry, and the singletons shared across micro frontends).
 
@@ -213,6 +245,7 @@ The workflow has read-only permissions, cancels superseded runs on the same bran
 - [ ] Replicate the catalog into booking through events, removing the synchronous call
 - [ ] Traces starting in the browser and Prometheus alerts
 - [ ] Virtual waiting room for high-demand sale openings
+- [ ] Before using a real email provider in production: a per-recipient send limit and address confirmation, so checkout cannot be used to send spam
 
 ## License
 

@@ -1,4 +1,4 @@
-import type { CancelReason, OrderDto, OrderStatus } from '@plateia/contracts';
+import type { CancelReason, Locale, OrderDto, OrderStatus } from '@plateia/contracts';
 
 export interface Order {
   id: string;
@@ -9,6 +9,7 @@ export interface Order {
   totalCents: number;
   customerName: string;
   customerEmail: string;
+  locale: Locale;
   status: OrderStatus;
   cancelReason: CancelReason | null;
   createdAt: Date;

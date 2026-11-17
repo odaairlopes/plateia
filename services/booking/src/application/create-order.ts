@@ -44,6 +44,7 @@ export function makeCreateOrder(deps: CreateOrderDeps) {
       totalCents: hold.totalCents,
       customerName: input.customer.name,
       customerEmail: input.customer.email,
+      locale: input.locale,
       status: 'pending_payment',
       cancelReason: null,
       createdAt: deps.clock.now(),

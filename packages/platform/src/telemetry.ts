@@ -1,5 +1,6 @@
 import { register } from 'node:module';
 import { FastifyOtelInstrumentation } from '@fastify/otel';
+import { createAddHookMessageChannel } from 'import-in-the-middle';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -29,13 +30,18 @@ let sdk: NodeSDK | undefined;
 
 const isProbe = (url: string | undefined) => url?.startsWith('/health') === true || url?.startsWith('/docs') === true;
 
-export function startTelemetry(serviceName: string): void {
+export async function startTelemetry(serviceName: string): Promise<void> {
   if (sdk || process.env.OTEL_SDK_DISABLED === 'true') return;
 
   // Libraries imported as ES modules (ioredis here) are only patchable through
   // a module hook, and only if it is registered before they are loaded — which
   // is why the dev/start scripts preload this file with `node --import`.
-  register('@opentelemetry/instrumentation/hook.mjs', import.meta.url);
+  // The message channel limits the hook to the modules the instrumentations
+  // asked for; without it every module, our own .ts files included, gets
+  // wrapped, which is slower and logs a warning for each re-export it cannot
+  // follow.
+  const { registerOptions, waitForAllMessagesAcknowledged } = createAddHookMessageChannel();
+  register('import-in-the-middle/hook.mjs', import.meta.url, registerOptions);
 
   sdk = new NodeSDK({
     resource: defaultResource().merge(
@@ -72,6 +78,7 @@ export function startTelemetry(serviceName: string): void {
   });
 
   sdk.start();
+  await waitForAllMessagesAcknowledged();
 }
 
 /** Flushes pending spans and metrics; call it last during graceful shutdown. */

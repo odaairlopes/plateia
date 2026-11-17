@@ -14,6 +14,8 @@ import type { EventDetail, EventSummary, Hold, OrderDto, SeatMap } from '@platei
 
 const CATALOG_URL = process.env.CATALOG_URL ?? 'http://localhost:3001';
 const BOOKING_URL = process.env.BOOKING_URL ?? 'http://localhost:3002';
+const MAILPIT_URL = process.env.MAILPIT_URL ?? 'http://localhost:8025';
+const EMAIL_TIMEOUT_MS = 20_000;
 const SAGA_TIMEOUT_MS = 20_000;
 
 interface ApiResult<T> {
@@ -66,11 +68,40 @@ async function settledOrder(orderId: string, session: string): Promise<OrderDto>
   throw new Error(`Order ${orderId} still pending after ${SAGA_TIMEOUT_MS} ms`);
 }
 
+interface MailpitSummary {
+  ID: string;
+  Subject: string;
+}
+
+interface MailpitMessage {
+  HTML: string;
+  Text: string;
+  Inline: Array<{ ContentType: string }>;
+}
+
+/** Waits for the confirmation email to land in Mailpit (the local SMTP catcher). */
+async function receivedEmail(address: string): Promise<MailpitSummary & MailpitMessage> {
+  const deadline = Date.now() + EMAIL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const search = await fetch(`${MAILPIT_URL}/api/v1/search?query=${encodeURIComponent(`to:"${address}"`)}`);
+    const { messages } = (await search.json()) as { messages: MailpitSummary[] };
+    const [summary] = messages;
+    if (summary) {
+      const message = (await (await fetch(`${MAILPIT_URL}/api/v1/message/${summary.ID}`)).json()) as MailpitMessage;
+      return { ...summary, ...message };
+    }
+    await sleep(500);
+  }
+  throw new Error(`No email reached ${address} within ${EMAIL_TIMEOUT_MS} ms`);
+}
+
 async function main(): Promise<void> {
   const alice = crypto.randomUUID();
   const bruno = crypto.randomUUID();
-  const customer = { name: 'Smoke Test', email: 'smoke@example.com' };
+  // A unique address per run, so the email check never matches an older run.
+  const customer = { name: 'Smoke Test', email: `smoke-${crypto.randomUUID().slice(0, 8)}@example.com` };
   let event!: EventDetail;
+  let confirmedOrderId = '';
 
   console.log(`Smoke test against catalog=${CATALOG_URL} booking=${BOOKING_URL}`);
 
@@ -110,6 +141,15 @@ async function main(): Promise<void> {
 
     const stranger = await call(`${BOOKING_URL}/orders/${order.body.id}`, { session: bruno });
     assert.equal(stranger.status, 404, "an order was visible to another visitor's session");
+    confirmedOrderId = order.body.id;
+  });
+
+  await step('the customer receives the tickets by email', async () => {
+    const email = await receivedEmail(customer.email);
+    assert.ok(email.Subject.includes(event.title), `unexpected subject: ${email.Subject}`);
+    assert.ok(email.HTML.includes(confirmedOrderId.slice(0, 8).toUpperCase()), 'order code missing from the email');
+    assert.ok(email.Text.length > 0, 'plain-text alternative missing');
+    assert.equal(email.Inline.filter((part) => part.ContentType === 'image/png').length, 1, 'QR code missing');
   });
 
   await step('a declined payment releases the seat', async () => {

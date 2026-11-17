@@ -26,6 +26,13 @@ export interface SubscribeOptions {
   /** Unique name of this process inside the group. */
   consumer: string;
   handlers: EventHandlers;
+  /**
+   * Where a brand-new group starts reading. 'beginning' (default) replays the
+   * stream history, right for consumers that rebuild state. A consumer with
+   * external side effects, such as sending email, must use 'latest': replaying
+   * history would e-mail every past customer again.
+   */
+  startFrom?: 'beginning' | 'latest';
 }
 
 export interface BusLogger {
@@ -207,8 +214,8 @@ export function createRedisEventBus(redisUrl: string, logger: BusLogger): EventB
       // Blocking reads need their own connection.
       const reader = new Redis(redisUrl, { maxRetriesPerRequest: null });
       try {
-        // '0' = a group created late still receives the history; handlers are idempotent.
-        await reader.xgroup('CREATE', EVENT_STREAM, options.group, '0', 'MKSTREAM');
+        const startId = options.startFrom === 'latest' ? '$' : '0';
+        await reader.xgroup('CREATE', EVENT_STREAM, options.group, startId, 'MKSTREAM');
       } catch (error) {
         if (!(error instanceof Error && error.message.includes('BUSYGROUP'))) throw error;
       }
