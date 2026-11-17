@@ -1,0 +1,16 @@
+{
+  "name": "@plateia/catalog-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --import tsx --import ./src/telemetry.ts --watch-path=src --watch-path=../../packages --watch-preserve-output src/main.ts",
+    "start": "node --import tsx --import ./src/telemetry.ts src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@plateia/contracts": "*",
+    "@plateia/platform": "*",
+    "zod": "^4.6.7"
+  }
+}

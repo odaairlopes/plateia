@@ -1,0 +1,13 @@
+apiVersion: 1
+
+# Traces are explored in the Jaeger UI (http://localhost:16686), linked from
+# the dashboard. Jaeger v2 no longer serves the legacy query API that
+# Grafana's Jaeger data source depends on, so it is not provisioned here.
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
