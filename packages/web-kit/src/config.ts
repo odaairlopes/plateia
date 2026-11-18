@@ -4,4 +4,5 @@ const env = import.meta.env as Record<string, string | undefined>;
 export const apiConfig = {
   catalogUrl: env.VITE_CATALOG_API_URL ?? 'http://localhost:3001',
   bookingUrl: env.VITE_BOOKING_API_URL ?? 'http://localhost:3002',
+  backofficeUrl: env.VITE_BACKOFFICE_API_URL ?? 'http://localhost:3005',
 } as const;

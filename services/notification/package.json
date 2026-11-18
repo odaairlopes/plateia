@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file-if-exists=../../.env --import tsx --import ./src/telemetry.ts --watch-path=src --watch-path=../../packages --watch-preserve-output src/main.ts",
+    "dev": "node --env-file-if-exists=../../.env --import tsx --import ./src/telemetry.ts --watch --watch-preserve-output src/main.ts",
     "start": "node --env-file-if-exists=../../.env --import tsx --import ./src/telemetry.ts src/main.ts",
     "preview:email": "tsx src/email/preview.ts",
     "typecheck": "tsc -p tsconfig.json"

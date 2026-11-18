@@ -10,11 +10,23 @@
  */
 import assert from 'node:assert/strict';
 import { setTimeout as sleep } from 'node:timers/promises';
-import type { EventDetail, EventSummary, Hold, OrderDto, SeatMap } from '@plateia/contracts';
+import type { Dashboard, EventDetail, EventSummary, Hold, OrderDto, SeatMap } from '@plateia/contracts';
 
 const CATALOG_URL = process.env.CATALOG_URL ?? 'http://localhost:3001';
 const BOOKING_URL = process.env.BOOKING_URL ?? 'http://localhost:3002';
 const MAILPIT_URL = process.env.MAILPIT_URL ?? 'http://localhost:8025';
+const BACKOFFICE_URL = process.env.BACKOFFICE_URL ?? 'http://localhost:3005';
+// Demo organizer accounts seeded by the back-office migrations (development only).
+const DEMO_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD ?? 'plateia-demo-2026';
+const ORGANIZER_BY_EVENT: Record<string, string> = {
+  'noite-de-vidro': 'ana@aurora.dev',
+  'orquestra-do-vale': 'ana@aurora.dev',
+  'o-ultimo-farol': 'ana@aurora.dev',
+  'festival-maresia': 'bruno@marealta.dev',
+  'circuito-baixo-centro': 'bruno@marealta.dev',
+  'riso-solto': 'bruno@marealta.dev',
+};
+const PROJECTION_TIMEOUT_MS = 20_000;
 const EMAIL_TIMEOUT_MS = 20_000;
 const SAGA_TIMEOUT_MS = 20_000;
 
@@ -95,6 +107,25 @@ async function receivedEmail(address: string): Promise<MailpitSummary & MailpitM
   throw new Error(`No email reached ${address} within ${EMAIL_TIMEOUT_MS} ms`);
 }
 
+/** Signs in to the back office and returns the session cookie. */
+async function signIn(email: string): Promise<string> {
+  const response = await fetch(`${BACKOFFICE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password: DEMO_PASSWORD }),
+  });
+  assert.equal(response.status, 200, `organizer sign-in failed with ${response.status}`);
+  const cookie = response.headers.getSetCookie().find((value) => value.startsWith('plateia_admin='));
+  assert.ok(cookie, 'no session cookie');
+  assert.match(cookie, /HttpOnly/i, 'session cookie must be httpOnly');
+  return cookie.split(';')[0] ?? '';
+}
+
+async function dashboard(cookie: string, eventId: string): Promise<{ status: number; body: Dashboard }> {
+  const response = await fetch(`${BACKOFFICE_URL}/dashboard?period=7d&eventId=${eventId}`, { headers: { cookie } });
+  return { status: response.status, body: (await response.json()) as Dashboard };
+}
+
 async function main(): Promise<void> {
   const alice = crypto.randomUUID();
   const bruno = crypto.randomUUID();
@@ -142,6 +173,31 @@ async function main(): Promise<void> {
     const stranger = await call(`${BOOKING_URL}/orders/${order.body.id}`, { session: bruno });
     assert.equal(stranger.status, 404, "an order was visible to another visitor's session");
     confirmedOrderId = order.body.id;
+  });
+
+  await step("the organizer's dashboard shows the sale, and only to them", async () => {
+    const owner = ORGANIZER_BY_EVENT[event.id];
+    assert.ok(owner, `no demo organizer owns ${event.id}`);
+
+    const anonymous = await fetch(`${BACKOFFICE_URL}/dashboard`);
+    assert.equal(anonymous.status, 401, 'the dashboard answered without a session');
+
+    const cookie = await signIn(owner);
+    // The read model is fed by events: poll until the projection catches up.
+    const code = confirmedOrderId.slice(0, 8).toUpperCase();
+    const deadline = Date.now() + PROJECTION_TIMEOUT_MS;
+    let seen = false;
+    while (!seen && Date.now() < deadline) {
+      const { status, body } = await dashboard(cookie, event.id);
+      assert.equal(status, 200);
+      seen = body.recentOrders.some((recent) => recent.code === code);
+      if (!seen) await sleep(500);
+    }
+    assert.ok(seen, `order ${code} never reached the organizer dashboard`);
+
+    const otherOrganizer = Object.values(ORGANIZER_BY_EVENT).find((email) => email !== owner) ?? '';
+    const foreign = await dashboard(await signIn(otherOrganizer), event.id);
+    assert.equal(foreign.status, 404, "an organizer could read another organizer's event");
   });
 
   await step('the customer receives the tickets by email', async () => {

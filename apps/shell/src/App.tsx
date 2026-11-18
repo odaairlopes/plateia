@@ -10,6 +10,9 @@ const EventsPage = lazy(() => import('catalog/EventsPage'));
 const EventDetailPage = lazy(() => import('catalog/EventDetailPage'));
 const SeatSelectionPage = lazy(() => import('booking/SeatSelectionPage'));
 const OrderPage = lazy(() => import('booking/OrderPage'));
+// Not linked from anywhere public: organizers go to /admin directly. Its code
+// (charts included) is only downloaded when that route is opened.
+const AdminApp = lazy(() => import('admin/AdminApp'));
 
 export function App() {
   return (
@@ -46,6 +49,14 @@ export function App() {
               element={
                 <RemoteBoundary>
                   <OrderPage />
+                </RemoteBoundary>
+              }
+            />
+            <Route
+              path="admin/*"
+              element={
+                <RemoteBoundary>
+                  <AdminApp />
                 </RemoteBoundary>
               }
             />

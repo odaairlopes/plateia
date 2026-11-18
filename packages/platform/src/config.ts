@@ -8,7 +8,7 @@ export const baseEnvSchema = z.object({
   REDIS_URL: z.string().default('redis://localhost:6380'),
   CORS_ORIGINS: z
     .string()
-    .default('http://localhost:5173,http://localhost:5174,http://localhost:5175')
+    .default('http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176')
     .transform((value) =>
       value
         .split(',')

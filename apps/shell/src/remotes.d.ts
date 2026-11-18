@@ -19,6 +19,11 @@ declare module 'booking/SeatSelectionPage' {
   export default Page;
 }
 
+declare module 'admin/AdminApp' {
+  const Page: import('react').ComponentType;
+  export default Page;
+}
+
 declare module 'booking/OrderPage' {
   const Page: import('react').ComponentType;
   export default Page;

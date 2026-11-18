@@ -1,0 +1,19 @@
+{
+  "name": "@plateia/backoffice-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --import tsx --import ./src/telemetry.ts --watch --watch-preserve-output src/main.ts",
+    "start": "node --env-file-if-exists=../../.env --import tsx --import ./src/telemetry.ts src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/jwt": "^10.2.8",
+    "@node-rs/argon2": "^2.2.2",
+    "@plateia/contracts": "*",
+    "@plateia/platform": "*",
+    "zod": "^4.6.7"
+  }
+}

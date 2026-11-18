@@ -20,6 +20,8 @@ export interface BuildAppOptions {
   description: string;
   logLevel: string;
   corsOrigins: string[];
+  /** Allow browsers to send cookies cross-origin (session-cookie APIs only). */
+  corsCredentials?: boolean;
   /** Readiness probe: resolves when the dependencies are reachable. */
   ready?: () => Promise<void>;
 }
@@ -46,6 +48,7 @@ export async function buildApp(options: BuildAppOptions) {
     origin: options.corsOrigins,
     methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['content-type', SESSION_HEADER, 'x-request-id'],
+    credentials: options.corsCredentials ?? false,
     maxAge: 600,
   });
 

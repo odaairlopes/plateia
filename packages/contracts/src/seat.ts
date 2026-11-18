@@ -16,6 +16,12 @@ export interface SectionLayout {
 
 export const MAX_SEATS_PER_HOLD = 6;
 
+/**
+ * Every venue is in Brazil, on a single time zone (UTC-3, no DST). Dates shown
+ * to people (emails, reports) use it, whatever the server's time zone is.
+ */
+export const VENUE_TIME_ZONE = 'America/Sao_Paulo';
+
 const SEAT_ID_PATTERN = /^([a-z0-9-]{1,40}):(\d{1,3}):(\d{1,3})$/;
 
 export function formatSeatId({ sectionId, row, number }: SeatRef): string {

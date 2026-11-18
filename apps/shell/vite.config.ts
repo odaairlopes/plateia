@@ -29,6 +29,11 @@ export default defineConfig(({ mode }) => {
             name: 'booking',
             entry: remoteEntry(env.VITE_REMOTE_BOOKING_URL, ports.booking),
           },
+          admin: {
+            type: 'module',
+            name: 'admin',
+            entry: remoteEntry(env.VITE_REMOTE_ADMIN_URL, ports.admin),
+          },
         },
         shared: sharedDependencies,
         dts: false,

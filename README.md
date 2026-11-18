@@ -37,30 +37,37 @@ flowchart LR
     Shell["shell (host)\nlayout, rotas, tema, idioma"]
     MC["mfe-catalog\neventos"]
     MB["mfe-booking\nassentos e checkout"]
+    MA["mfe-admin\npainel do organizador"]
     Shell -. "Module Federation\n(carregado em runtime)" .-> MC
     Shell -. "Module Federation" .-> MB
+    Shell -. "Module Federation\n(só em /admin)" .-> MA
   end
 
   MC -->|HTTP| Catalog
   MB -->|HTTP + SSE| Booking
+  MA -->|"HTTP + cookie de sessão"| Backoffice
 
   subgraph Serviços
     Catalog["catalog-service\nFastify"]
     Booking["booking-service\nFastify"]
     Payment["payment-service\nFastify"]
     Notification["notification-service\nFastify + React Email"]
+    Backoffice["backoffice-service\nlogin + projeção de vendas"]
   end
 
   Booking -->|"HTTP (cache + stale-if-error)"| Catalog
   Booking <-->|"Redis Streams\n(eventos de domínio)"| Payment
   Booking -.->|"order.confirmed"| Notification
   Notification -->|HTTP| Catalog
+  Booking -.->|"order.*"| Backoffice
+  Backoffice -->|HTTP| Catalog
   Notification -->|SMTP| Mail[("Mailpit (local)\nou provedor SMTP")]
 
   Catalog --> PG[("Postgres\nschema por serviço")]
   Booking --> PG
   Payment --> PG
   Notification --> PG
+  Backoffice --> PG
   Booking --> Redis[("Redis\nholds, streams, pub/sub")]
 ```
 
@@ -69,10 +76,12 @@ flowchart LR
 | `apps/shell` | Host. Layout, rotas, tema claro/escuro, idioma. Isola falhas de cada remote com error boundary. |
 | `apps/mfe-catalog` | Remote. Lista e detalhe de eventos. |
 | `apps/mfe-booking` | Remote. Mapa de assentos em tempo real, reserva, checkout e acompanhamento do pedido. |
+| `apps/mfe-admin` | Remote. Painel do organizador: login, indicadores e gráficos de vendas (ECharts). |
 | `services/catalog` | Modelo de leitura de eventos e setores. |
 | `services/booking` | Reservas temporárias (Redis), pedidos e ingressos (Postgres), saga de checkout. |
 | `services/payment` | Provedor de pagamento simulado, guiado apenas por eventos. |
 | `services/notification` | Envia os ingressos por e-mail quando o pedido é confirmado. |
+| `services/backoffice` | Login dos organizadores e relatórios de vendas, a partir de uma projeção dos eventos. |
 | `packages/contracts` | Schemas Zod das APIs e dos eventos. Uma única fonte de verdade para back e front. |
 | `packages/platform` | Base dos serviços: fábrica HTTP, barramento de eventos, outbox, migrações. |
 | `packages/web-kit` | Base do front: tema, providers, i18n, cliente HTTP. |
@@ -129,8 +138,8 @@ Com o pedido confirmado, o serviço de notificação envia os ingressos por e-ma
 
 ## Stack
 
-- **Front:** React 19, TypeScript, Vite 8, Module Federation (`@module-federation/vite`), Material UI 9, React Query, React Router, React Hook Form, Zod, i18next
-- **Back:** Node.js, Fastify 5, Zod (`fastify-type-provider-zod`), OpenAPI/Swagger
+- **Front:** React 19, TypeScript, Vite 8, Module Federation (`@module-federation/vite`), Material UI 9, React Query, React Router, React Hook Form, Zod, i18next, ECharts
+- **Back:** Node.js, Fastify 5, Zod (`fastify-type-provider-zod`), OpenAPI/Swagger, JWT em cookie httpOnly, argon2id
 - **Dados:** PostgreSQL 17, Redis 8 (chaves com TTL, scripts Lua, Streams, Pub/Sub)
 - **Observabilidade:** OpenTelemetry (SDK + Collector), Jaeger, Prometheus, Grafana
 - **Testes:** Vitest
@@ -143,7 +152,8 @@ Requisitos: Node.js 22+ e Docker.
 ```bash
 npm install
 npm run infra:up   # Postgres (5433) e Redis (6380)
-npm run dev        # 3 serviços + 3 apps web
+npm run dev        # 5 serviços + 4 apps web
+npm run seed:demo  # opcional: histórico de vendas para o painel do organizador
 ```
 
 Abra http://localhost:5173. As migrações e os dados de exemplo são aplicados quando os serviços sobem. Nenhum `.env` é necessário; veja `.env.example` para sobrescrever valores.
@@ -155,6 +165,8 @@ Abra http://localhost:5173. As migrações e os dados de exemplo são aplicados 
 | http://localhost:3001/docs | OpenAPI do catálogo |
 | http://localhost:3002/docs | OpenAPI de reservas |
 | http://localhost:8025 | Mailpit: caixa de entrada local com todos os e-mails enviados |
+| http://localhost:5173/admin | Painel do organizador (contas de demonstração abaixo) |
+| http://localhost:3005/docs | OpenAPI do backoffice |
 
 Para ver a concorrência, abra o mesmo evento em duas janelas (uma delas anônima): o assento reservado em uma aparece bloqueado na outra em tempo real.
 
@@ -215,18 +227,46 @@ npm run preview:email -w @plateia/notification-service
 
 Para entregar de verdade, basta apontar o SMTP para um provedor. O [Brevo](https://www.brevo.com), por exemplo, tem plano gratuito de 300 e-mails por dia. Copie `.env.example` para `.env` e preencha `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `MAIL_FROM` (um remetente verificado no provedor). O código não muda.
 
+## Painel do organizador
+
+![Painel do organizador com receita, ingressos, ocupação, gráficos de vendas por dia, receita por evento, resultado dos pedidos e mapa de calor](docs/images/admin-dashboard-pt.png)
+
+Em http://localhost:5173/admin, cada produtora vê as vendas dos próprios eventos: receita, ingressos, ticket médio, ocupação, taxa de pagamentos aprovados, vendas por dia, receita e ocupação por evento ou por setor, resultado dos pedidos, um mapa de calor de quando as pessoas compram e os últimos pedidos. Os filtros de evento e período ficam na URL, então uma visão filtrada pode ser salva ou compartilhada.
+
+- **Microfront separado (`mfe-admin`):** não há link para ele na parte pública, e o código (com o ECharts) só é baixado por quem abre `/admin`. Quem compra ingresso nunca carrega o painel.
+- **Segurança no servidor, não na tela:** login com senha em argon2id, sessão em cookie `httpOnly` + `SameSite=Strict` (inacessível a JavaScript e não enviado por outros sites) e limite de tentativas. E-mail inexistente e senha errada respondem igual e no mesmo tempo. Cada consulta é limitada aos eventos do organizador; o evento de outra produtora responde 404, como se não existisse.
+- **Leitura separada da escrita (CQRS):** o `backoffice-service` mantém o próprio modelo de leitura, alimentado por `order.created`, `order.confirmed` e `order.cancelled`. Um consumidor novo lê a stream desde o início, então a projeção pode ser apagada e reconstruída a qualquer momento. Ela guarda só o e-mail mascarado do comprador.
+- **Gráficos com [ECharts](https://echarts.apache.org):** só os tipos usados são registrados (tree-shaking), renderizados em SVG, com resumo em texto para leitores de tela, cores do tema claro ou escuro e animação desligada para quem pede menos movimento.
+
+### Contas e dados de demonstração
+
+| Conta | Produtora | Eventos |
+|---|---|---|
+| `ana@aurora.dev` | Aurora Produções | Noite de Vidro, Orquestra do Vale, O Último Farol |
+| `bruno@marealta.dev` | Maré Alta Eventos | Festival Maresia, Circuito Baixo Centro, Riso Solto |
+
+A senha das duas é `plateia-demo-2026`. São contas de desenvolvimento, criadas pela migração do serviço.
+
+Para o painel não começar vazio, há um histórico de cerca de 75 dias de vendas:
+
+```bash
+npm run seed:demo
+```
+
+O seed grava os pedidos direto nos bancos de reservas e do backoffice, então os assentos aparecem vendidos no mapa e no painel. Ele não passa pelo barramento de eventos: reconstruir a projeção a partir da stream não traria esses pedidos de volta. Por isso eles são marcados como `source = 'seed'`.
+
 ## Testes
 
 As regras de negócio dependem de portas (interfaces), não de Postgres ou Redis, então os casos de uso são testados com implementações em memória: disputa pelo mesmo assento, expiração da reserva, idempotência do checkout, evento de pagamento duplicado, compensação quando o assento é vendido para outra pessoa e pagamento que chega depois do pedido expirar.
 
-O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não alcançam: Postgres e Redis reais, os scripts Lua das reservas, o relay do outbox e a saga atravessando dois serviços. Ele compra assentos, confirma que um segundo visitante não consegue reservá-los, que o checkout repetido não duplica o pedido, que o pagamento recusado libera o assento que um pedido não aparece para outra sessão e que o e-mail com os ingressos chega, com o código do pedido e o QR code.
+O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não alcançam: Postgres e Redis reais, os scripts Lua das reservas, o relay do outbox e a saga atravessando dois serviços. Ele compra assentos, confirma que um segundo visitante não consegue reservá-los, que o checkout repetido não duplica o pedido, que o pagamento recusado libera o assento, que um pedido não aparece para outra sessão, que o e-mail com os ingressos chega com o código do pedido e o QR code, e que a venda aparece no painel da produtora dona do evento, e só no dela.
 
 ### Integração contínua
 
 O GitHub Actions roda em todo push e pull request:
 
 1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e build dos micro frontends.
-2. **Fumaça**, depois da qualidade: sobe Postgres, Redis e Mailpit como contêineres de serviço, inicia os quatro serviços e roda `npm run smoke`. Se falhar, os logs dos serviços ficam disponíveis como artefato.
+2. **Fumaça**, depois da qualidade: sobe Postgres, Redis e Mailpit como contêineres de serviço, inicia os cinco serviços e roda `npm run smoke`. Se falhar, os logs dos serviços ficam disponíveis como artefato.
 
 O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry e os singletons compartilhados entre os micro frontends).
 

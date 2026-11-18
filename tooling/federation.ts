@@ -16,4 +16,4 @@ export const sharedDependencies = {
   'react-i18next': { singleton: true },
 } as const;
 
-export const ports = { shell: 5173, catalog: 5174, booking: 5175 } as const;
+export const ports = { shell: 5173, catalog: 5174, booking: 5175, admin: 5176 } as const;

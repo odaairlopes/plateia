@@ -1,4 +1,4 @@
-import { parseSeatId, rowLabel, type EventDetail, type EventOf, type Locale } from '@plateia/contracts';
+import { parseSeatId, rowLabel, VENUE_TIME_ZONE, type EventDetail, type EventOf, type Locale } from '@plateia/contracts';
 import { copy } from './copy';
 
 /** Everything the template shows, already formatted. The template only lays it out. */
@@ -27,8 +27,6 @@ export interface OrderConfirmationView {
 
 export const QR_CID = 'ticket-qr';
 
-/** Every venue is in Brazil, which is on a single time zone (UTC-3, no DST). */
-const VENUE_TIME_ZONE = 'America/Sao_Paulo';
 const DOORS_BEFORE_MS = 60 * 60_000;
 const ASSUMED_DURATION_MS = 3 * 60 * 60_000;
 

@@ -23,6 +23,8 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  /** 'include' sends cookies cross-origin: only for the cookie-session back office API. */
+  credentials?: RequestCredentials;
 }
 
 /** Thin fetch wrapper: JSON in/out, the session header, and typed API errors. */
@@ -35,6 +37,7 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal,
+    credentials: options.credentials,
   });
 
   if (response.status === 204) return undefined as T;
