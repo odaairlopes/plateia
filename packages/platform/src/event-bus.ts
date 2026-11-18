@@ -1,6 +1,7 @@
 import { context, metrics, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
 import { Redis } from 'ioredis';
 import { domainEventSchema, type DomainEvent, type DomainEventType, type EventOf } from '@plateia/contracts';
+import { getPlatformSettings } from './config';
 import { captureTraceContext, restoreTraceContext, tracer, type TraceCarrier } from './tracing';
 
 export type EventHandlers = {
@@ -199,7 +200,18 @@ export function createRedisEventBus(redisUrl: string, logger: BusLogger): EventB
       );
       try {
         const carrier = captureTraceContext(trace.setSpan(parent, span));
-        await publisher.xadd(EVENT_STREAM, '*', 'event', JSON.stringify(event), 'trace', JSON.stringify(carrier));
+        // MAXLEN ~ trims old entries cheaply (whole nodes), keeping memory bounded.
+        await publisher.xadd(
+          EVENT_STREAM,
+          'MAXLEN',
+          '~',
+          getPlatformSettings().EVENT_STREAM_MAXLEN,
+          '*',
+          'event',
+          JSON.stringify(event),
+          'trace',
+          JSON.stringify(carrier),
+        );
         publishedCounter.add(1, { 'event.type': event.type });
       } catch (error) {
         span.recordException(error instanceof Error ? error : new Error(String(error)));

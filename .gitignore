@@ -10,3 +10,5 @@ coverage/
 .__mf__temp/
 .DS_Store
 .preview/
+deploy-dist/
+dist-web/

@@ -24,7 +24,9 @@
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "build:backend": "node deploy/backend/build.mjs",
+    "build:web:prod": "node deploy/web/build.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -33,6 +35,7 @@
     "typescript": "^7.0.2",
     "vitest": "^5.1.0",
     "@plateia/contracts": "*",
-    "@plateia/platform": "*"
+    "@plateia/platform": "*",
+    "esbuild": "^0.28.2"
   }
 }

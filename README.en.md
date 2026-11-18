@@ -255,6 +255,16 @@ npm run seed:demo
 
 The seed writes the orders straight into the booking and back-office databases, so the seats show as sold on the map and in the dashboard. It does not go through the event bus: rebuilding the projection from the stream would not bring these orders back. That is why they are marked `source = 'seed'`.
 
+## Production
+
+The project runs on free plans: static front end on **Vercel**, backend in a Docker container on **Render**, Postgres on **Neon**, Redis on **Redis Cloud** and email through **Brevo**. Step by step (in Portuguese) in [docs/deploy.md](./docs/deploy.md).
+
+- **One site, one origin:** Vercel publishes the shell and the three micro frontends as a single project (`/` and `/mf/*`) and proxies `/api/*` to the backend. To the browser it is all the same domain: the dashboard cookie works with `SameSite=Strict` and there is no CORS.
+- **One container, five processes:** the free plan allows one web service, so the image runs the five services as separate processes (each with its own schema, pool and lifecycle), behind a `node:http` gateway that streams responses through (SSE included). The image uses about 340 MB of the 512 MB available.
+- **Production build:** each service becomes a JavaScript bundle (esbuild), with dependencies resolved from `node_modules` at runtime. The final image holds production dependencies only and does not run as root.
+- **Tuned to free-tier limits:** few database connections per service, a capped event stream, per-recipient and daily email limits, and the real client IP behind the proxies for rate limiting.
+- **Trade-off:** the backend sleeps after 15 minutes without traffic, and the first visit after that takes about a minute.
+
 ## Tests
 
 The business rules depend on ports (interfaces), not on Postgres or Redis, so the use cases are tested with in-memory implementations: two visitors racing for the same seat, hold expiry, checkout idempotency, a duplicated payment event, compensation when the seat is sold to someone else, and a payment that arrives after the order expired.
@@ -265,8 +275,8 @@ The smoke test (`scripts/smoke.ts`) covers what unit tests cannot reach: real Po
 
 GitHub Actions runs on every push and pull request:
 
-1. **Quality**, on Node 22 (lowest supported) and 24 (LTS): strict typecheck, unit tests and the micro frontend build.
-2. **Smoke**, after quality: starts Postgres, Redis and Mailpit as service containers, boots the five services and runs `npm run smoke`. On failure, the service logs are kept as an artifact.
+1. **Quality**, on Node 22 (lowest supported) and 24 (LTS): strict typecheck, unit tests and the site build exactly as Vercel publishes it.
+2. **Smoke on the production image**, after quality: builds the same Docker image Render uses, runs it with 512 MB of memory against real Postgres, Redis and Mailpit, and runs `npm run smoke` through the gateway. A broken Dockerfile fails in the PR, not in production.
 
 The workflow has read-only permissions, cancels superseded runs on the same branch and pins actions to commit SHAs (a tag can be moved; a SHA cannot). Dependabot updates dependencies and actions weekly, grouping packages that must move together (OpenTelemetry, and the singletons shared across micro frontends).
 
@@ -280,7 +290,7 @@ The workflow has read-only permissions, cancels superseded runs on the same bran
 ## Next steps
 
 - [ ] Integration tests with Testcontainers and E2E with Playwright (including a race between two browsers)
-- [ ] Multi-stage Dockerfiles and image publishing from CI
+- [ ] Per-pull-request staging (Vercel preview with its own backend)
 - [ ] Authentication and a "my tickets" area
 - [ ] Replicate the catalog into booking through events, removing the synchronous call
 - [ ] Traces starting in the browser and Prometheus alerts

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createEvent, type EventDetail, type Locale } from '@plateia/contracts';
 import { QR_CID } from '../email/view';
-import type { ClaimResult, EmailKind, Mailer, NotificationLog, OutgoingEmail, SendOutcome } from './ports';
+import type { ClaimResult, EmailKind, Mailer, NotificationLog, OutgoingEmail, SendLimits, SendOutcome } from './ports';
 import { makeSendOrderConfirmation } from './send-order-confirmation';
 
 const show: EventDetail = {
@@ -29,22 +29,41 @@ class RecordingMailer implements Mailer {
   }
 }
 
-class InMemoryLog implements NotificationLog {
-  readonly rows = new Map<string, { status: 'pending' | 'sent' | 'failed'; error?: string }>();
+type Row = { status: 'pending' | 'sent' | 'failed' | 'suppressed'; error?: string; recipient?: string };
 
-  async claim(orderId: string, kind: EmailKind): Promise<ClaimResult> {
+class InMemoryLog implements NotificationLog {
+  readonly rows = new Map<string, Row>();
+
+  async claim(orderId: string, kind: EmailKind, recipientHash: string): Promise<ClaimResult> {
     const key = `${orderId}|${kind}`;
-    if (this.rows.get(key)?.status === 'sent') return 'already_sent';
-    this.rows.set(key, { status: 'pending' });
+    const status = this.rows.get(key)?.status;
+    if (status === 'sent') return 'already_sent';
+    if (status === 'suppressed') return 'already_suppressed';
+    this.rows.set(key, { status: 'pending', recipient: recipientHash });
     return 'claimed';
   }
 
+  private update(orderId: string, kind: EmailKind, change: Partial<Row>) {
+    const key = `${orderId}|${kind}`;
+    this.rows.set(key, { ...(this.rows.get(key) ?? { status: 'pending' }), ...change });
+  }
+
   async markSent(orderId: string, kind: EmailKind) {
-    this.rows.set(`${orderId}|${kind}`, { status: 'sent' });
+    this.update(orderId, kind, { status: 'sent', error: undefined });
   }
 
   async markFailed(orderId: string, kind: EmailKind, error: string) {
-    this.rows.set(`${orderId}|${kind}`, { status: 'failed', error });
+    this.update(orderId, kind, { status: 'failed', error });
+  }
+
+  async markSuppressed(orderId: string, kind: EmailKind, reason: string) {
+    this.update(orderId, kind, { status: 'suppressed', error: reason });
+  }
+
+  async countSentSince(_since: Date, recipientHash?: string) {
+    return [...this.rows.values()].filter(
+      (row) => row.status === 'sent' && (recipientHash === undefined || row.recipient === recipientHash),
+    ).length;
   }
 }
 
@@ -52,7 +71,7 @@ const ORDER_ID = '17f4f71f-1111-4111-8111-111111111111';
 // Intl uses non-breaking spaces in currencies and times; compare on plain text.
 const normalize = (value: string) => value.replace(/[  ]/g, ' ');
 
-function setup(locale: Locale = 'pt') {
+function setup(locale: Locale = 'pt', limits?: SendLimits) {
   const mailer = new RecordingMailer();
   const log = new InMemoryLog();
   const outcomes: SendOutcome[] = [];
@@ -61,6 +80,8 @@ function setup(locale: Locale = 'pt') {
     mailer,
     log,
     appUrl: 'https://plateia.example',
+    limits,
+    hashRecipient: (email) => `hash:${email.toLowerCase()}`,
     onOutcome: (outcome) => outcomes.push(outcome),
   });
   const event = createEvent('order.confirmed', {
@@ -146,7 +167,7 @@ describe('order confirmation email', () => {
     mailer.failWith = new Error('SMTP connection refused');
 
     await expect(send(event)).rejects.toThrow('SMTP connection refused');
-    expect(log.rows.get(`${ORDER_ID}|order_confirmed`)).toEqual({
+    expect(log.rows.get(`${ORDER_ID}|order_confirmed`)).toMatchObject({
       status: 'failed',
       error: 'SMTP connection refused',
     });
@@ -155,6 +176,58 @@ describe('order confirmation email', () => {
     // The retry goes through once SMTP is back.
     mailer.failWith = undefined;
     await expect(send(event)).resolves.toBe('sent');
+  });
+
+  it('stops mailing an address that already received its daily share', async () => {
+    const { mailer, log, send, outcomes } = setup('pt', { perRecipientPerDay: 2, perDay: 100 });
+    const order = (orderId: string, email: string) =>
+      createEvent('order.confirmed', {
+        orderId,
+        eventId: show.id,
+        seatIds: ['plateia:1:1'],
+        totalCents: 18000,
+        customer: { name: 'Marina Costa', email },
+        locale: 'pt',
+      });
+
+    await send(order('00000000-0000-4000-8000-000000000001', 'target@example.com'));
+    await send(order('00000000-0000-4000-8000-000000000002', 'TARGET@example.com'));
+    await expect(send(order('00000000-0000-4000-8000-000000000003', 'target@example.com'))).resolves.toBe(
+      'suppressed',
+    );
+    // Another address is unaffected.
+    await expect(send(order('00000000-0000-4000-8000-000000000004', 'other@example.com'))).resolves.toBe('sent');
+
+    expect(mailer.sent.map((email) => email.to.address)).toEqual([
+      'target@example.com',
+      'TARGET@example.com',
+      'other@example.com',
+    ]);
+    expect(log.rows.get('00000000-0000-4000-8000-000000000003|order_confirmed')).toMatchObject({
+      status: 'suppressed',
+      error: 'recipient_limit',
+    });
+    // A redelivered suppressed event stays suppressed.
+    await expect(send(order('00000000-0000-4000-8000-000000000003', 'target@example.com'))).resolves.toBe(
+      'skipped_duplicate',
+    );
+    expect(outcomes).toEqual(['sent', 'sent', 'suppressed', 'sent', 'skipped_duplicate']);
+  });
+
+  it('stops all sending at the daily cap', async () => {
+    const { mailer, send } = setup('pt', { perRecipientPerDay: 10, perDay: 1 });
+    const order = (orderId: string, email: string) =>
+      createEvent('order.confirmed', {
+        orderId,
+        eventId: show.id,
+        seatIds: ['plateia:1:1'],
+        totalCents: 18000,
+        customer: { name: 'Marina Costa', email },
+        locale: 'pt',
+      });
+    await send(order('00000000-0000-4000-8000-000000000001', 'a@example.com'));
+    await expect(send(order('00000000-0000-4000-8000-000000000002', 'b@example.com'))).resolves.toBe('suppressed');
+    expect(mailer.sent).toHaveLength(1);
   });
 
   it('fails loudly when the event is missing from the catalog', async () => {

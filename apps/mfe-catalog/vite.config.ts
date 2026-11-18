@@ -5,6 +5,8 @@ import { ports, sharedDependencies } from '../../tooling/federation.ts';
 
 export default defineConfig({
   envDir: '../../',
+  // Where the remote is served in production (deploy/web/build.mjs), e.g. /mf/catalog/.
+  base: process.env.VITE_BASE ?? '/',
   plugins: [
     react(),
     federation({

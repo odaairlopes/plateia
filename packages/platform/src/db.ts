@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import pg from 'pg';
+import { getPlatformSettings } from './config';
 
 export type Pool = pg.Pool;
 export type PoolClient = pg.PoolClient;
@@ -16,7 +17,7 @@ export function assertSchemaName(schema: string): string {
 }
 
 export function createPool(connectionString: string): Pool {
-  return new pg.Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000 });
+  return new pg.Pool({ connectionString, max: getPlatformSettings().DB_POOL_MAX, idleTimeoutMillis: 30_000 });
 }
 
 export async function withTransaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {

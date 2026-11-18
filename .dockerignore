@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+deploy-dist
+dist-web
+.git
+.github
+docs
+**/.preview
+**/.vite
+**/.__mf__temp
+.env
+.env.*
+*.log

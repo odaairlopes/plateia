@@ -255,6 +255,16 @@ npm run seed:demo
 
 O seed grava os pedidos direto nos bancos de reservas e do backoffice, então os assentos aparecem vendidos no mapa e no painel. Ele não passa pelo barramento de eventos: reconstruir a projeção a partir da stream não traria esses pedidos de volta. Por isso eles são marcados como `source = 'seed'`.
 
+## Produção
+
+O projeto roda em planos gratuitos: front estático na **Vercel**, backend num contêiner Docker no **Render**, Postgres no **Neon**, Redis no **Redis Cloud** e e-mails pelo **Brevo**. O passo a passo está em [docs/deploy.md](./docs/deploy.md).
+
+- **Um site, uma origem:** a Vercel publica o shell e os três microfronts num projeto só (`/` e `/mf/*`) e repassa `/api/*` ao backend. Para o navegador, tudo é o mesmo domínio: o cookie do painel funciona com `SameSite=Strict` e não há CORS.
+- **Um contêiner, cinco processos:** o plano gratuito permite um serviço web, então a imagem roda os cinco serviços como processos separados (cada um com o próprio schema, pool e ciclo de vida), atrás de um gateway em `node:http` que repassa respostas em streaming (SSE incluído). A imagem usa cerca de 340 MB dos 512 MB disponíveis.
+- **Build de produção:** cada serviço vira um bundle JavaScript (esbuild), com as dependências resolvidas de `node_modules` em tempo de execução. A imagem final tem só as dependências de produção e não roda como root.
+- **Ajustado aos limites gratuitos:** poucas conexões por serviço com o banco, fila de eventos com tamanho máximo, limite de e-mails por destinatário e por dia, e IP real do cliente atrás dos proxies para o rate limit.
+- **Trade-off:** o backend dorme após 15 minutos sem acesso, e a primeira visita depois disso leva cerca de 1 minuto.
+
 ## Testes
 
 As regras de negócio dependem de portas (interfaces), não de Postgres ou Redis, então os casos de uso são testados com implementações em memória: disputa pelo mesmo assento, expiração da reserva, idempotência do checkout, evento de pagamento duplicado, compensação quando o assento é vendido para outra pessoa e pagamento que chega depois do pedido expirar.
@@ -265,8 +275,8 @@ O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não al
 
 O GitHub Actions roda em todo push e pull request:
 
-1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e build dos micro frontends.
-2. **Fumaça**, depois da qualidade: sobe Postgres, Redis e Mailpit como contêineres de serviço, inicia os cinco serviços e roda `npm run smoke`. Se falhar, os logs dos serviços ficam disponíveis como artefato.
+1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e o build do site exatamente como a Vercel publica.
+2. **Fumaça na imagem de produção**, depois da qualidade: constrói a mesma imagem Docker que o Render usa, sobe com 512 MB de memória contra Postgres, Redis e Mailpit reais e roda `npm run smoke` pelo gateway. Um Dockerfile quebrado falha no PR, não em produção.
 
 O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry e os singletons compartilhados entre os micro frontends).
 
@@ -280,7 +290,7 @@ O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo
 ## Próximos passos
 
 - [ ] Testes de integração com Testcontainers e E2E com Playwright (incluindo corrida entre dois navegadores)
-- [ ] Dockerfiles multi-stage e publicação das imagens pelo CI
+- [ ] Ambiente de homologação por pull request (preview na Vercel com backend próprio)
 - [ ] Autenticação e área "meus ingressos"
 - [ ] Replicar o catálogo no booking por eventos, removendo a chamada síncrona
 - [ ] Traces a partir do navegador e alertas no Prometheus

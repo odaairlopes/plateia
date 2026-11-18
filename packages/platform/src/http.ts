@@ -12,6 +12,7 @@ import {
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import { SESSION_HEADER, type Problem } from '@plateia/contracts';
+import { getPlatformSettings } from './config';
 import { DomainError } from './errors';
 import { traceLogFields } from './tracing';
 
@@ -32,7 +33,10 @@ export interface BuildAppOptions {
  * known origins, rate limiting, request ids, OpenAPI docs and health probes.
  */
 export async function buildApp(options: BuildAppOptions) {
+  const { TRUST_PROXY_HOPS } = getPlatformSettings();
   const app = Fastify({
+    // Trust exactly N proxy hops (same semantics as a numeric trustProxy).
+    trustProxy: TRUST_PROXY_HOPS > 0 ? (_address: string, hop: number) => hop < TRUST_PROXY_HOPS : false,
     // Every log line carries the ids of the trace it belongs to.
     logger: { level: options.logLevel, base: { service: options.name }, mixin: traceLogFields },
     genReqId: (request) => {

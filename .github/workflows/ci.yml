@@ -50,13 +50,14 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Build micro frontends and shell
-        run: npm run build:web
+      # The exact static site Vercel publishes (shell at /, remotes under /mf/*).
+      - name: Build the production web site
+        run: npm run build:web:prod
 
   smoke:
-    name: End-to-end smoke test (Postgres + Redis + SMTP + back office)
+    name: Production image end to end (Postgres + Redis + SMTP)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: quality
     services:
       postgres:
@@ -82,13 +83,6 @@ jobs:
         options: >-
           --health-cmd "/mailpit readyz"
           --health-interval 3s --health-timeout 3s --health-retries 20
-    env:
-      # Throwaway credentials of the CI service container, not a secret.
-      DATABASE_URL: postgres://plateia:plateia@localhost:5432/plateia
-      REDIS_URL: redis://localhost:6379
-      OTEL_SDK_DISABLED: "true"
-      PAYMENT_DELAY_MS: "300"
-      LOG_LEVEL: warn
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -99,33 +93,43 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      # The same image Render builds and runs: the smoke test exercises the
+      # production artifact (bundles, gateway, start script), not the sources.
+      - name: Build the production image
+        run: docker build -f deploy/backend/Dockerfile -t plateia-api:ci .
+
+      - name: Start the production image
+        # Throwaway values for the CI containers; nothing here is a real secret.
+        run: |
+          docker run -d --name api --network host --memory 512m \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://plateia:plateia@localhost:5432/plateia \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e SMTP_HOST=localhost -e SMTP_PORT=1025 \
+            -e BACKOFFICE_JWT_SECRET=ci-only-secret-0123456789abcdef0123 \
+            -e MAIL_RECIPIENT_HASH_SECRET=ci-only-hash-secret \
+            -e PAYMENT_DELAY_MS=300 -e DB_POOL_MAX=3 -e LOG_LEVEL=warn \
+            plateia-api:ci
+          for attempt in $(seq 1 90); do
+            curl -fs http://localhost:8080/health > /dev/null && { echo "gateway ready"; exit 0; }
+            sleep 1
+          done
+          echo "The container never became healthy"
+          exit 1
+
       - run: npm ci
 
-      - name: Start services
-        run: |
-          mkdir -p logs
-          for service in catalog booking payment notification backoffice; do
-            npm start -w "@plateia/$service-service" > "logs/$service.log" 2>&1 &
-          done
-
-      - name: Wait until every service is ready
-        run: |
-          for port in 3001 3002 3003 3004 3005; do
-            for attempt in $(seq 1 60); do
-              curl -fs "http://localhost:$port/health/ready" > /dev/null && break
-              if [ "$attempt" = 60 ]; then echo "Service on port $port never became ready"; exit 1; fi
-              sleep 1
-            done
-            echo "port $port ready"
-          done
-
-      - name: Smoke test the purchase flow
+      - name: Smoke test through the gateway
+        env:
+          CATALOG_URL: http://localhost:8080/api/catalog
+          BOOKING_URL: http://localhost:8080/api/booking
+          BACKOFFICE_URL: http://localhost:8080/api/backoffice
         run: npm run smoke
 
-      - name: Upload service logs
+      - name: Memory used by the container
+        if: always()
+        run: docker stats --no-stream --format '{{.MemUsage}}' api || true
+
+      - name: Container logs
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: service-logs
-          path: logs/
-          retention-days: 7
+        run: docker logs api 2>&1 | tail -200

@@ -14,7 +14,7 @@ import {
 } from '@plateia/platform';
 import { shutdownTelemetry } from '@plateia/platform/telemetry';
 import { makeSendOrderConfirmation } from './application/send-order-confirmation';
-import { createPgNotificationLog } from './infra/pg-notification-log';
+import { createPgNotificationLog, createRecipientHasher } from './infra/pg-notification-log';
 import { createSmtpMailer } from './infra/smtp-mailer';
 
 const env = loadEnv(
@@ -32,8 +32,14 @@ const env = loadEnv(
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     MAIL_FROM: z.string().default('Plateia <ingressos@plateia.dev>'),
+    // Anti-abuse caps (0 disables one). Defaults fit Brevo's free plan (300/day).
+    MAIL_MAX_PER_RECIPIENT_PER_DAY: z.coerce.number().int().min(0).default(5),
+    MAIL_MAX_PER_DAY: z.coerce.number().int().min(0).default(250),
+    MAIL_RECIPIENT_HASH_SECRET: z.string().min(16).default('plateia-dev-only-recipient-hash-secret'),
   }),
 );
+
+const unlimited = Number.MAX_SAFE_INTEGER;
 
 const pool = createPool(env.DATABASE_URL);
 const mailer = createSmtpMailer({
@@ -66,7 +72,7 @@ mailer
   .catch((error: unknown) => app.log.warn({ err: error, host: env.SMTP_HOST }, 'SMTP server not reachable yet'));
 
 const emailsCounter = metrics.getMeter('plateia.notification').createCounter('plateia.emails', {
-  description: 'Confirmation emails by outcome (sent, skipped_duplicate, failed)',
+  description: 'Confirmation emails by outcome (sent, skipped_duplicate, suppressed, failed)',
 });
 
 const sendOrderConfirmation = makeSendOrderConfirmation({
@@ -74,6 +80,11 @@ const sendOrderConfirmation = makeSendOrderConfirmation({
   mailer,
   log: createPgNotificationLog(pool),
   appUrl: env.APP_URL,
+  limits: {
+    perRecipientPerDay: env.MAIL_MAX_PER_RECIPIENT_PER_DAY || unlimited,
+    perDay: env.MAIL_MAX_PER_DAY || unlimited,
+  },
+  hashRecipient: createRecipientHasher(env.MAIL_RECIPIENT_HASH_SECRET),
   onOutcome: (outcome) => emailsCounter.add(1, { kind: 'order_confirmed', outcome }),
 });
 
