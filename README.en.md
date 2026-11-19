@@ -5,6 +5,10 @@
 > Ticketing platform with real-time seat selection.
 > Micro frontends with Module Federation, event-driven Fastify microservices, Postgres and Redis.
 
+**[See it live → plateia-eight.vercel.app](https://plateia-eight.vercel.app)** · organizer dashboard at [/admin](https://plateia-eight.vercel.app/admin)
+
+> The backend runs on Render's free plan and sleeps after 15 minutes without traffic: the first visit can take about a minute.
+
 🇧🇷 [Leia em português](./README.md)
 
 ![Seat map with a hold in progress: sold seats, seats held by other visitors and the hold countdown](docs/images/seat-map-en.png)

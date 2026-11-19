@@ -5,6 +5,10 @@
 > Plataforma de venda de ingressos com escolha de assentos em tempo real.
 > Micro frontends com Module Federation, microsserviços Fastify orientados a eventos, Postgres e Redis.
 
+**[Ver ao vivo → plateia-eight.vercel.app](https://plateia-eight.vercel.app)** · painel do organizador em [/admin](https://plateia-eight.vercel.app/admin)
+
+> O backend roda no plano gratuito do Render e dorme após 15 minutos sem acesso: a primeira visita pode levar cerca de 1 minuto.
+
 🇺🇸 [Read in English](./README.en.md)
 
 ![Mapa de assentos com reserva em andamento: assentos vendidos, reservados por outras pessoas e o contador da reserva](docs/images/seat-map-pt.png)
