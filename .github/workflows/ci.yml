@@ -23,7 +23,7 @@ env:
 
 jobs:
   quality:
-    name: Typecheck, lint, unit tests and build (Node ${{ matrix.node }})
+    name: Typecheck, format, lint, unit tests and build (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -46,6 +46,9 @@ jobs:
 
       - name: Typecheck (strict, every workspace)
         run: npm run typecheck
+
+      - name: Formatting (Prettier)
+        run: npm run format:check
 
       # Oxlint with type-aware rules (tsgolint, on TypeScript 7). Findings show
       # up as annotations on the pull request diff.
