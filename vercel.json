@@ -5,7 +5,7 @@
   "buildCommand": "node deploy/web/build.mjs",
   "outputDirectory": "dist-web",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://plateia-api.onrender.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://plateia-api-dcx4.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
