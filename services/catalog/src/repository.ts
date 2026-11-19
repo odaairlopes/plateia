@@ -57,9 +57,7 @@ function toSection(row: SectionRow): Section {
 export function createCatalogRepository(pool: Pool): CatalogRepository {
   return {
     async listEvents() {
-      const { rows } = await pool.query<EventRow>(
-        `SELECT ${EVENT_COLUMNS} FROM catalog.events e ORDER BY e.starts_at`,
-      );
+      const { rows } = await pool.query<EventRow>(`SELECT ${EVENT_COLUMNS} FROM catalog.events e ORDER BY e.starts_at`);
       return rows.map(toSummary);
     },
 

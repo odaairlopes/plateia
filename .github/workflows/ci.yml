@@ -74,20 +74,20 @@ jobs:
           POSTGRES_USER: plateia
           POSTGRES_PASSWORD: plateia
           POSTGRES_DB: plateia
-        ports: ["5432:5432"]
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U plateia -d plateia"
           --health-interval 3s --health-timeout 3s --health-retries 20
       redis:
         image: redis:8-alpine
-        ports: ["6379:6379"]
+        ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 3s --health-timeout 3s --health-retries 20
       # Captures the confirmation emails; the smoke test reads them back over its API.
       mailpit:
         image: axllent/mailpit:v1.34.0
-        ports: ["1025:1025", "8025:8025"]
+        ports: ['1025:1025', '8025:8025']
         options: >-
           --health-cmd "/mailpit readyz"
           --health-interval 3s --health-timeout 3s --health-retries 20

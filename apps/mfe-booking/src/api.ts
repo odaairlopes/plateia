@@ -12,8 +12,7 @@ const { bookingUrl, catalogUrl } = apiConfig;
 export const eventQuery = (eventId: string) =>
   queryOptions({
     queryKey: ['catalog', 'event', eventId],
-    queryFn: ({ signal }) =>
-      apiRequest<EventDetail>(`${catalogUrl}/events/${encodeURIComponent(eventId)}`, { signal }),
+    queryFn: ({ signal }) => apiRequest<EventDetail>(`${catalogUrl}/events/${encodeURIComponent(eventId)}`, { signal }),
     staleTime: 60_000,
   });
 
@@ -29,8 +28,7 @@ export const seatMapQuery = (eventId: string) =>
     refetchInterval: 20_000,
   });
 
-export const seatStreamUrl = (eventId: string) =>
-  `${bookingUrl}/events/${encodeURIComponent(eventId)}/seats/stream`;
+export const seatStreamUrl = (eventId: string) => `${bookingUrl}/events/${encodeURIComponent(eventId)}/seats/stream`;
 
 export const createHold = (eventId: string, seatIds: string[]) =>
   apiRequest<Hold>(`${bookingUrl}/holds`, { method: 'POST', body: { eventId, seatIds } });
@@ -44,7 +42,6 @@ export const createOrder = (request: CreateOrderRequest) =>
 export const orderQuery = (orderId: string) =>
   queryOptions({
     queryKey: ['booking', 'order', orderId],
-    queryFn: ({ signal }) =>
-      apiRequest<OrderDto>(`${bookingUrl}/orders/${encodeURIComponent(orderId)}`, { signal }),
+    queryFn: ({ signal }) => apiRequest<OrderDto>(`${bookingUrl}/orders/${encodeURIComponent(orderId)}`, { signal }),
     staleTime: 0,
   });

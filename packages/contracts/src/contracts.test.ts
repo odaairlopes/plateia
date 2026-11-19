@@ -7,12 +7,9 @@ describe('seat ids', () => {
     expect(parseSeatId(formatSeatId(seat))).toEqual(seat);
   });
 
-  it.each(['', 'vip', 'vip:1', 'VIP:1:1', 'vip:a:1', 'vip:1:1:1', 'vip:1:-2'])(
-    'rejects malformed id %j',
-    (seatId) => {
-      expect(parseSeatId(seatId)).toBeNull();
-    },
-  );
+  it.each(['', 'vip', 'vip:1', 'VIP:1:1', 'vip:a:1', 'vip:1:1:1', 'vip:1:-2'])('rejects malformed id %j', (seatId) => {
+    expect(parseSeatId(seatId)).toBeNull();
+  });
 
   it('checks seats against the section layout', () => {
     const section = { id: 'vip', rows: 4, seatsPerRow: 10 };

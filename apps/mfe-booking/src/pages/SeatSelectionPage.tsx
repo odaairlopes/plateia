@@ -189,7 +189,8 @@ export default function SeatSelectionPage() {
           {t('title')}
         </Typography>
         <Typography color="text.secondary">
-          {event.data.title} · <time dateTime={event.data.startsAt}>{formatEventDate(event.data.startsAt, locale)}</time>
+          {event.data.title} ·{' '}
+          <time dateTime={event.data.startsAt}>{formatEventDate(event.data.startsAt, locale)}</time>
         </Typography>
       </Stack>
 

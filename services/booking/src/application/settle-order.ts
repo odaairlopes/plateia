@@ -40,9 +40,7 @@ export function makeSettleOrder(deps: SettleOrderDeps) {
         if (order.status === 'cancelled') {
           // The money arrived after the order was cancelled (e.g. it expired).
           // Re-announce the cancellation so the payment service refunds it.
-          await tx.enqueue(
-            createEvent('order.cancelled', { orderId, reason: order.cancelReason ?? 'expired' }),
-          );
+          await tx.enqueue(createEvent('order.cancelled', { orderId, reason: order.cancelReason ?? 'expired' }));
           return null;
         }
 

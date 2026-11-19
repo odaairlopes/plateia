@@ -71,20 +71,20 @@ flowchart LR
   Booking --> Redis[("Redis\nholds, streams, pub/sub")]
 ```
 
-| Parte | Responsabilidade |
-|---|---|
-| `apps/shell` | Host. Layout, rotas, tema claro/escuro, idioma. Isola falhas de cada remote com error boundary. |
-| `apps/mfe-catalog` | Remote. Lista e detalhe de eventos. |
-| `apps/mfe-booking` | Remote. Mapa de assentos em tempo real, reserva, checkout e acompanhamento do pedido. |
-| `apps/mfe-admin` | Remote. Painel do organizador: login, indicadores e gráficos de vendas (ECharts). |
-| `services/catalog` | Modelo de leitura de eventos e setores. |
-| `services/booking` | Reservas temporárias (Redis), pedidos e ingressos (Postgres), saga de checkout. |
-| `services/payment` | Provedor de pagamento simulado, guiado apenas por eventos. |
-| `services/notification` | Envia os ingressos por e-mail quando o pedido é confirmado. |
-| `services/backoffice` | Login dos organizadores e relatórios de vendas, a partir de uma projeção dos eventos. |
-| `packages/contracts` | Schemas Zod das APIs e dos eventos. Uma única fonte de verdade para back e front. |
-| `packages/platform` | Base dos serviços: fábrica HTTP, barramento de eventos, outbox, migrações. |
-| `packages/web-kit` | Base do front: tema, providers, i18n, cliente HTTP. |
+| Parte                   | Responsabilidade                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps/shell`            | Host. Layout, rotas, tema claro/escuro, idioma. Isola falhas de cada remote com error boundary. |
+| `apps/mfe-catalog`      | Remote. Lista e detalhe de eventos.                                                             |
+| `apps/mfe-booking`      | Remote. Mapa de assentos em tempo real, reserva, checkout e acompanhamento do pedido.           |
+| `apps/mfe-admin`        | Remote. Painel do organizador: login, indicadores e gráficos de vendas (ECharts).               |
+| `services/catalog`      | Modelo de leitura de eventos e setores.                                                         |
+| `services/booking`      | Reservas temporárias (Redis), pedidos e ingressos (Postgres), saga de checkout.                 |
+| `services/payment`      | Provedor de pagamento simulado, guiado apenas por eventos.                                      |
+| `services/notification` | Envia os ingressos por e-mail quando o pedido é confirmado.                                     |
+| `services/backoffice`   | Login dos organizadores e relatórios de vendas, a partir de uma projeção dos eventos.           |
+| `packages/contracts`    | Schemas Zod das APIs e dos eventos. Uma única fonte de verdade para back e front.               |
+| `packages/platform`     | Base dos serviços: fábrica HTTP, barramento de eventos, outbox, migrações.                      |
+| `packages/web-kit`      | Base do front: tema, providers, i18n, cliente HTTP.                                             |
 
 ## O fluxo de compra
 
@@ -118,19 +118,19 @@ Com o pedido confirmado, o serviço de notificação envia os ingressos por e-ma
 
 ## Decisões de arquitetura e trade-offs
 
-**Duas camadas contra a venda duplicada.** A reserva temporária vive no Redis: uma chave por assento com TTL, adquirida por um script Lua para que vários assentos sejam reservados de forma atômica. É rápida e se limpa sozinha. A garantia final, porém, é a chave primária `(event_id, seat_id)` da tabela de ingressos no Postgres. Mesmo que o Redis perca dados, o banco recusa a segunda venda. *Trade-off:* duas fontes de estado para o mapa de assentos, unidas na leitura.
+**Duas camadas contra a venda duplicada.** A reserva temporária vive no Redis: uma chave por assento com TTL, adquirida por um script Lua para que vários assentos sejam reservados de forma atômica. É rápida e se limpa sozinha. A garantia final, porém, é a chave primária `(event_id, seat_id)` da tabela de ingressos no Postgres. Mesmo que o Redis perca dados, o banco recusa a segunda venda. _Trade-off:_ duas fontes de estado para o mapa de assentos, unidas na leitura.
 
-**Outbox transacional em vez de publicar direto no broker.** Gravar no banco e publicar um evento são duas operações; uma pode falhar sem a outra. O evento é gravado na mesma transação da mudança de estado e um relay o publica depois (`FOR UPDATE SKIP LOCKED`, seguro com várias réplicas). *Trade-off:* entrega pelo menos uma vez, então todo consumidor precisa ser idempotente. Aqui a idempotência vem de restrições únicas (`hold_id` nos pedidos, `order_id` nos pagamentos) e de checar o estado antes de agir.
+**Outbox transacional em vez de publicar direto no broker.** Gravar no banco e publicar um evento são duas operações; uma pode falhar sem a outra. O evento é gravado na mesma transação da mudança de estado e um relay o publica depois (`FOR UPDATE SKIP LOCKED`, seguro com várias réplicas). _Trade-off:_ entrega pelo menos uma vez, então todo consumidor precisa ser idempotente. Aqui a idempotência vem de restrições únicas (`hold_id` nos pedidos, `order_id` nos pagamentos) e de checar o estado antes de agir.
 
-**Saga coreografada.** Os serviços reagem a eventos, sem orquestrador central. Para três passos, é o desenho mais simples. *Trade-off:* o fluxo fica espalhado; com mais participantes, um orquestrador passaria a compensar.
+**Saga coreografada.** Os serviços reagem a eventos, sem orquestrador central. Para três passos, é o desenho mais simples. _Trade-off:_ o fluxo fica espalhado; com mais participantes, um orquestrador passaria a compensar.
 
-**Redis Streams como barramento.** Grupos de consumidores, confirmação explícita, retentativas com backoff e uma stream de dead-letter. Já estava na stack por causa das reservas, então evita operar um Kafka ou RabbitMQ a mais. *Trade-off:* menos garantias de retenção e ordenação por partição que o Kafka.
+**Redis Streams como barramento.** Grupos de consumidores, confirmação explícita, retentativas com backoff e uma stream de dead-letter. Já estava na stack por causa das reservas, então evita operar um Kafka ou RabbitMQ a mais. _Trade-off:_ menos garantias de retenção e ordenação por partição que o Kafka.
 
-**SSE que só sinaliza.** O servidor envia apenas "algo mudou"; o navegador refaz a consulta do mapa. Uma mensagem perdida ou uma reconexão nunca deixa a tela errada. *Trade-off:* uma requisição a mais por mudança, em troca de não manter estado duplicado no cliente.
+**SSE que só sinaliza.** O servidor envia apenas "algo mudou"; o navegador refaz a consulta do mapa. Uma mensagem perdida ou uma reconexão nunca deixa a tela errada. _Trade-off:_ uma requisição a mais por mudança, em troca de não manter estado duplicado no cliente.
 
-**Chamada síncrona protegida entre booking e catalog.** O booking precisa de preços e do layout da casa. A chamada tem timeout, cache curto e serve o último valor conhecido se o catálogo cair. *Trade-off:* uma mudança de preço leva até 30 s para chegar ao booking. O próximo passo seria replicar o catálogo por eventos.
+**Chamada síncrona protegida entre booking e catalog.** O booking precisa de preços e do layout da casa. A chamada tem timeout, cache curto e serve o último valor conhecido se o catálogo cair. _Trade-off:_ uma mudança de preço leva até 30 s para chegar ao booking. O próximo passo seria replicar o catálogo por eventos.
 
-**Micro frontends com contrato mínimo.** Cada remote expõe apenas páginas sem props; os dados passam pela URL e por singletons compartilhados (React, router, MUI, React Query, i18next). Cada remote registra as próprias traduções e roda sozinho em modo standalone. *Trade-off:* as versões das dependências compartilhadas precisam andar juntas.
+**Micro frontends com contrato mínimo.** Cada remote expõe apenas páginas sem props; os dados passam pela URL e por singletons compartilhados (React, router, MUI, React Query, i18next). Cada remote registra as próprias traduções e roda sozinho em modo standalone. _Trade-off:_ as versões das dependências compartilhadas precisam andar juntas.
 
 **Preço calculado no servidor.** O cliente envia só os identificadores dos assentos; o total sempre vem do catálogo.
 
@@ -159,15 +159,15 @@ npm run seed:demo  # opcional: histórico de vendas para o painel do organizador
 
 Abra http://localhost:5173. As migrações e os dados de exemplo são aplicados quando os serviços sobem. Nenhum `.env` é necessário; veja `.env.example` para sobrescrever valores.
 
-| Endereço | O quê |
-|---|---|
-| http://localhost:5173 | Aplicação (shell) |
-| http://localhost:5174 · 5175 | Micro frontends em modo standalone |
-| http://localhost:3001/docs | OpenAPI do catálogo |
-| http://localhost:3002/docs | OpenAPI de reservas |
-| http://localhost:8025 | Mailpit: caixa de entrada local com todos os e-mails enviados |
-| http://localhost:5173/admin | Painel do organizador (contas de demonstração abaixo) |
-| http://localhost:3005/docs | OpenAPI do backoffice |
+| Endereço                     | O quê                                                         |
+| ---------------------------- | ------------------------------------------------------------- |
+| http://localhost:5173        | Aplicação (shell)                                             |
+| http://localhost:5174 · 5175 | Micro frontends em modo standalone                            |
+| http://localhost:3001/docs   | OpenAPI do catálogo                                           |
+| http://localhost:3002/docs   | OpenAPI de reservas                                           |
+| http://localhost:8025        | Mailpit: caixa de entrada local com todos os e-mails enviados |
+| http://localhost:5173/admin  | Painel do organizador (contas de demonstração abaixo)         |
+| http://localhost:3005/docs   | OpenAPI do backoffice                                         |
 
 Para ver a concorrência, abra o mesmo evento em duas janelas (uma delas anônima): o assento reservado em uma aparece bloqueado na outra em tempo real.
 
@@ -190,17 +190,17 @@ npm run e2e                      # sobe o gateway e o site e roda os testes
 npm run obs:up   # Collector, Jaeger, Prometheus e Grafana
 ```
 
-| Endereço | O quê |
-|---|---|
-| http://localhost:3030 | Grafana, com o dashboard "Plateia — Overview" já provisionado |
-| http://localhost:16686 | Jaeger: traces distribuídos |
-| http://localhost:9090 | Prometheus |
+| Endereço               | O quê                                                         |
+| ---------------------- | ------------------------------------------------------------- |
+| http://localhost:3030  | Grafana, com o dashboard "Plateia — Overview" já provisionado |
+| http://localhost:16686 | Jaeger: traces distribuídos                                   |
+| http://localhost:9090  | Prometheus                                                    |
 
 ![Dashboard do Grafana com o fluxo de negócio e os sinais HTTP](docs/images/grafana.png)
 
 ![Trace no Jaeger de uma compra atravessando os serviços de reservas e de pagamento](docs/images/jaeger-trace.png)
 
-*Um trace de compra no Jaeger: 37 spans em dois serviços, da requisição HTTP à emissão dos ingressos, passando pela fila.*
+_Um trace de compra no Jaeger: 37 spans em dois serviços, da requisição HTTP à emissão dos ingressos, passando pela fila._
 
 Os serviços exportam tudo por OTLP para o **OpenTelemetry Collector**, que encaminha traces ao Jaeger e expõe métricas ao Prometheus. O serviço não sabe para onde a telemetria vai; trocar o destino é mudar a configuração do Collector, sem novo deploy. Sem a pilha no ar, a exportação falha em silêncio e nada muda para a aplicação.
 
@@ -248,9 +248,9 @@ Em http://localhost:5173/admin, cada produtora vê as vendas dos próprios event
 
 ### Contas e dados de demonstração
 
-| Conta | Produtora | Eventos |
-|---|---|---|
-| `ana@aurora.dev` | Aurora Produções | Noite de Vidro, Orquestra do Vale, O Último Farol |
+| Conta                | Produtora         | Eventos                                             |
+| -------------------- | ----------------- | --------------------------------------------------- |
+| `ana@aurora.dev`     | Aurora Produções  | Noite de Vidro, Orquestra do Vale, O Último Farol   |
 | `bruno@marealta.dev` | Maré Alta Eventos | Festival Maresia, Circuito Baixo Centro, Riso Solto |
 
 A senha das duas é `plateia-demo-2026`. São contas de desenvolvimento, criadas pela migração do serviço.
@@ -302,7 +302,7 @@ O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo
 
 ## Acessibilidade
 
-- Mapa de assentos navegável por teclado (setas, Home/End) com *roving tabindex*: o mapa é uma única parada de Tab.
+- Mapa de assentos navegável por teclado (setas, Home/End) com _roving tabindex_: o mapa é uma única parada de Tab.
 - O estado do assento nunca depende só de cor: há borda, padrão e texto alternativo para cada estado.
 - Foco movido para o conteúdo a cada navegação, link "pular para o conteúdo", regiões `aria-live` para avisos.
 - Contraste AA nos temas claro e escuro; respeita `prefers-reduced-motion`.

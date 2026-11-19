@@ -53,22 +53,24 @@ describe('holding seats', () => {
   });
 
   it('rejects seats outside the venue layout', async () => {
-    await expect(
-      ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:3:1'] }),
-    ).rejects.toMatchObject({ code: 'INVALID_SEAT', status: 422 });
+    await expect(ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:3:1'] })).rejects.toMatchObject({
+      code: 'INVALID_SEAT',
+      status: 422,
+    });
   });
 
   it('rejects unknown events', async () => {
-    await expect(
-      ctx.holdSeats({ sessionId: ALICE, eventId: 'missing', seatIds: ['vip:1:1'] }),
-    ).rejects.toMatchObject({ code: 'EVENT_NOT_FOUND', status: 404 });
+    await expect(ctx.holdSeats({ sessionId: ALICE, eventId: 'missing', seatIds: ['vip:1:1'] })).rejects.toMatchObject({
+      code: 'EVENT_NOT_FOUND',
+      status: 404,
+    });
   });
 
   it('closes sales once the event has started', async () => {
     ctx.clock.advance(365 * 24 * 60 * 60_000);
-    await expect(
-      ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:1:1'] }),
-    ).rejects.toMatchObject({ code: 'EVENT_ALREADY_STARTED' });
+    await expect(ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:1:1'] })).rejects.toMatchObject({
+      code: 'EVENT_ALREADY_STARTED',
+    });
   });
 
   it('does not let two visitors hold the same seat', async () => {
@@ -89,9 +91,9 @@ describe('holding seats', () => {
   it('frees the seats when the hold expires', async () => {
     await ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:1:1'] });
     ctx.clock.advance(HOLD_TTL + 1);
-    await expect(
-      ctx.holdSeats({ sessionId: BRUNO, eventId: 'show', seatIds: ['vip:1:1'] }),
-    ).resolves.toMatchObject({ seatIds: ['vip:1:1'] });
+    await expect(ctx.holdSeats({ sessionId: BRUNO, eventId: 'show', seatIds: ['vip:1:1'] })).resolves.toMatchObject({
+      seatIds: ['vip:1:1'],
+    });
   });
 
   it('only lets the owner release a hold', async () => {
@@ -117,7 +119,13 @@ describe('checkout saga', () => {
 
   it('is idempotent: retrying the same hold returns the same order', async () => {
     const hold = await ctx.holdSeats({ sessionId: ALICE, eventId: 'show', seatIds: ['vip:1:1'] });
-    const input = { sessionId: ALICE, holdId: hold.holdId, customer, paymentScenario: 'approve' as const, locale: 'pt' as const };
+    const input = {
+      sessionId: ALICE,
+      holdId: hold.holdId,
+      customer,
+      paymentScenario: 'approve' as const,
+      locale: 'pt' as const,
+    };
     const first = await ctx.createOrder(input);
     const second = await ctx.createOrder(input);
     expect(second.id).toBe(first.id);
@@ -145,9 +153,9 @@ describe('checkout saga', () => {
       type: 'order.confirmed',
       payload: { totalCents: 20000, customer, locale: 'pt', seatIds: ['vip:1:1'] },
     });
-    await expect(
-      ctx.holdSeats({ sessionId: BRUNO, eventId: 'show', seatIds: ['vip:1:1'] }),
-    ).rejects.toMatchObject({ code: 'SEATS_UNAVAILABLE' });
+    await expect(ctx.holdSeats({ sessionId: BRUNO, eventId: 'show', seatIds: ['vip:1:1'] })).rejects.toMatchObject({
+      code: 'SEATS_UNAVAILABLE',
+    });
   });
 
   it('ignores a duplicated payment event', async () => {

@@ -21,10 +21,7 @@ createRoot(container).render(
           <Routes>
             <Route path="events/:eventId/seats" element={<SeatSelectionPage />} />
             <Route path="orders/:orderId" element={<OrderPage />} />
-            <Route
-              path="*"
-              element={<Typography>Standalone booking: open /events/&lt;eventId&gt;/seats</Typography>}
-            />
+            <Route path="*" element={<Typography>Standalone booking: open /events/&lt;eventId&gt;/seats</Typography>} />
           </Routes>
         </Container>
       </BrowserRouter>

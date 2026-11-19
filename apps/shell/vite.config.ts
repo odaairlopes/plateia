@@ -7,8 +7,7 @@ const ENV_DIR = '../../';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ENV_DIR, 'VITE_');
-  const remoteEntry = (url: string | undefined, port: number) =>
-    `${url ?? `http://localhost:${port}`}/remoteEntry.js`;
+  const remoteEntry = (url: string | undefined, port: number) => `${url ?? `http://localhost:${port}`}/remoteEntry.js`;
 
   return {
     envDir: ENV_DIR,

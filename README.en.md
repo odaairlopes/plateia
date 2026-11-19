@@ -71,20 +71,20 @@ flowchart LR
   Booking --> Redis[("Redis\nholds, streams, pub/sub")]
 ```
 
-| Part | Responsibility |
-|---|---|
-| `apps/shell` | Host. Layout, routes, light/dark theme, language. Isolates each remote's failures with an error boundary. |
-| `apps/mfe-catalog` | Remote. Event list and detail. |
-| `apps/mfe-booking` | Remote. Real-time seat map, hold, checkout and order tracking. |
-| `apps/mfe-admin` | Remote. Organizer dashboard: sign-in, KPIs and sales charts (ECharts). |
-| `services/catalog` | Read model of events and sections. |
-| `services/booking` | Temporary holds (Redis), orders and tickets (Postgres), checkout saga. |
-| `services/payment` | Simulated payment provider, driven only by events. |
-| `services/notification` | Emails the tickets once an order is confirmed. |
-| `services/backoffice` | Organizer sign-in and sales reporting, from a projection of the events. |
-| `packages/contracts` | Zod schemas for APIs and events. A single source of truth for back end and front end. |
-| `packages/platform` | Service foundation: HTTP factory, event bus, outbox, migrations. |
-| `packages/web-kit` | Front-end foundation: theme, providers, i18n, HTTP client. |
+| Part                    | Responsibility                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `apps/shell`            | Host. Layout, routes, light/dark theme, language. Isolates each remote's failures with an error boundary. |
+| `apps/mfe-catalog`      | Remote. Event list and detail.                                                                            |
+| `apps/mfe-booking`      | Remote. Real-time seat map, hold, checkout and order tracking.                                            |
+| `apps/mfe-admin`        | Remote. Organizer dashboard: sign-in, KPIs and sales charts (ECharts).                                    |
+| `services/catalog`      | Read model of events and sections.                                                                        |
+| `services/booking`      | Temporary holds (Redis), orders and tickets (Postgres), checkout saga.                                    |
+| `services/payment`      | Simulated payment provider, driven only by events.                                                        |
+| `services/notification` | Emails the tickets once an order is confirmed.                                                            |
+| `services/backoffice`   | Organizer sign-in and sales reporting, from a projection of the events.                                   |
+| `packages/contracts`    | Zod schemas for APIs and events. A single source of truth for back end and front end.                     |
+| `packages/platform`     | Service foundation: HTTP factory, event bus, outbox, migrations.                                          |
+| `packages/web-kit`      | Front-end foundation: theme, providers, i18n, HTTP client.                                                |
 
 ## The purchase flow
 
@@ -118,19 +118,19 @@ Once the order is confirmed, the notification service emails the tickets, with a
 
 ## Architecture decisions and trade-offs
 
-**Two layers against double-selling.** The temporary hold lives in Redis: one key per seat with a TTL, acquired by a Lua script so several seats are held atomically. It is fast and cleans up after itself. The final guarantee, though, is the `(event_id, seat_id)` primary key of the tickets table in Postgres. Even if Redis loses data, the database refuses the second sale. *Trade-off:* two sources of state for the seat map, merged on read.
+**Two layers against double-selling.** The temporary hold lives in Redis: one key per seat with a TTL, acquired by a Lua script so several seats are held atomically. It is fast and cleans up after itself. The final guarantee, though, is the `(event_id, seat_id)` primary key of the tickets table in Postgres. Even if Redis loses data, the database refuses the second sale. _Trade-off:_ two sources of state for the seat map, merged on read.
 
-**Transactional outbox instead of publishing straight to the broker.** Writing to the database and publishing an event are two operations; one can fail without the other. The event is stored in the same transaction as the state change and a relay publishes it afterwards (`FOR UPDATE SKIP LOCKED`, safe with several replicas). *Trade-off:* at-least-once delivery, so every consumer must be idempotent. Here idempotency comes from unique constraints (`hold_id` on orders, `order_id` on payments) and from checking the state before acting.
+**Transactional outbox instead of publishing straight to the broker.** Writing to the database and publishing an event are two operations; one can fail without the other. The event is stored in the same transaction as the state change and a relay publishes it afterwards (`FOR UPDATE SKIP LOCKED`, safe with several replicas). _Trade-off:_ at-least-once delivery, so every consumer must be idempotent. Here idempotency comes from unique constraints (`hold_id` on orders, `order_id` on payments) and from checking the state before acting.
 
-**Choreographed saga.** Services react to events, with no central orchestrator. For three steps, it is the simplest design. *Trade-off:* the flow is spread out; with more participants an orchestrator would start to pay off.
+**Choreographed saga.** Services react to events, with no central orchestrator. For three steps, it is the simplest design. _Trade-off:_ the flow is spread out; with more participants an orchestrator would start to pay off.
 
-**Redis Streams as the bus.** Consumer groups, explicit acknowledgement, retries with backoff and a dead-letter stream. Redis was already in the stack for the holds, which avoids operating Kafka or RabbitMQ as well. *Trade-off:* weaker retention and per-partition ordering guarantees than Kafka.
+**Redis Streams as the bus.** Consumer groups, explicit acknowledgement, retries with backoff and a dead-letter stream. Redis was already in the stack for the holds, which avoids operating Kafka or RabbitMQ as well. _Trade-off:_ weaker retention and per-partition ordering guarantees than Kafka.
 
-**SSE that only signals.** The server only says "something changed"; the browser refetches the seat map. A lost message or a reconnect can never leave the screen wrong. *Trade-off:* one extra request per change, in exchange for no duplicated state on the client.
+**SSE that only signals.** The server only says "something changed"; the browser refetches the seat map. A lost message or a reconnect can never leave the screen wrong. _Trade-off:_ one extra request per change, in exchange for no duplicated state on the client.
 
-**Guarded synchronous call from booking to catalog.** Booking needs prices and the venue layout. The call has a timeout, a short cache, and serves the last known value if the catalog is down. *Trade-off:* a price change takes up to 30 s to reach booking. The next step would be replicating the catalog through events.
+**Guarded synchronous call from booking to catalog.** Booking needs prices and the venue layout. The call has a timeout, a short cache, and serves the last known value if the catalog is down. _Trade-off:_ a price change takes up to 30 s to reach booking. The next step would be replicating the catalog through events.
 
-**Micro frontends with a minimal contract.** Each remote exposes only prop-less pages; data flows through the URL and shared singletons (React, router, MUI, React Query, i18next). Each remote registers its own translations and runs by itself in standalone mode. *Trade-off:* the versions of the shared dependencies must move together.
+**Micro frontends with a minimal contract.** Each remote exposes only prop-less pages; data flows through the URL and shared singletons (React, router, MUI, React Query, i18next). Each remote registers its own translations and runs by itself in standalone mode. _Trade-off:_ the versions of the shared dependencies must move together.
 
 **Prices computed on the server.** The client sends only seat identifiers; the total always comes from the catalog.
 
@@ -159,15 +159,15 @@ npm run seed:demo  # optional: sales history for the organizer dashboard
 
 Open http://localhost:5173. Migrations and sample data are applied when the services start. No `.env` is needed; see `.env.example` to override values.
 
-| Address | What |
-|---|---|
-| http://localhost:5173 | Application (shell) |
-| http://localhost:5174 · 5175 | Micro frontends in standalone mode |
-| http://localhost:3001/docs | Catalog OpenAPI |
-| http://localhost:3002/docs | Booking OpenAPI |
-| http://localhost:8025 | Mailpit: local inbox with every email sent |
-| http://localhost:5173/admin | Organizer dashboard (demo accounts below) |
-| http://localhost:3005/docs | Back-office OpenAPI |
+| Address                      | What                                       |
+| ---------------------------- | ------------------------------------------ |
+| http://localhost:5173        | Application (shell)                        |
+| http://localhost:5174 · 5175 | Micro frontends in standalone mode         |
+| http://localhost:3001/docs   | Catalog OpenAPI                            |
+| http://localhost:3002/docs   | Booking OpenAPI                            |
+| http://localhost:8025        | Mailpit: local inbox with every email sent |
+| http://localhost:5173/admin  | Organizer dashboard (demo accounts below)  |
+| http://localhost:3005/docs   | Back-office OpenAPI                        |
 
 To see the concurrency, open the same event in two windows (one of them private): a seat held in one shows up as blocked in the other in real time.
 
@@ -190,17 +190,17 @@ npm run e2e                      # starts the gateway and the site, then runs th
 npm run obs:up   # Collector, Jaeger, Prometheus and Grafana
 ```
 
-| Address | What |
-|---|---|
-| http://localhost:3030 | Grafana, with the "Plateia — Overview" dashboard already provisioned |
-| http://localhost:16686 | Jaeger: distributed traces |
-| http://localhost:9090 | Prometheus |
+| Address                | What                                                                 |
+| ---------------------- | -------------------------------------------------------------------- |
+| http://localhost:3030  | Grafana, with the "Plateia — Overview" dashboard already provisioned |
+| http://localhost:16686 | Jaeger: distributed traces                                           |
+| http://localhost:9090  | Prometheus                                                           |
 
 ![Grafana dashboard with the business flow and HTTP signals](docs/images/grafana.png)
 
 ![Jaeger trace of one purchase across the booking and payment services](docs/images/jaeger-trace.png)
 
-*One purchase trace in Jaeger: 37 spans across two services, from the HTTP request to the issued tickets, through the queue.*
+_One purchase trace in Jaeger: 37 spans across two services, from the HTTP request to the issued tickets, through the queue._
 
 Services export everything over OTLP to the **OpenTelemetry Collector**, which forwards traces to Jaeger and exposes metrics to Prometheus. A service does not know where its telemetry goes; changing the destination is a Collector configuration change, with no redeploy. With the stack down, exports fail silently and nothing changes for the application.
 
@@ -248,9 +248,9 @@ At http://localhost:5173/admin, each production company sees the sales of its ow
 
 ### Demo accounts and data
 
-| Account | Company | Events |
-|---|---|---|
-| `ana@aurora.dev` | Aurora Produções | Noite de Vidro, Orquestra do Vale, O Último Farol |
+| Account              | Company           | Events                                              |
+| -------------------- | ----------------- | --------------------------------------------------- |
+| `ana@aurora.dev`     | Aurora Produções  | Noite de Vidro, Orquestra do Vale, O Último Farol   |
 | `bruno@marealta.dev` | Maré Alta Eventos | Festival Maresia, Circuito Baixo Centro, Riso Solto |
 
 The password for both is `plateia-demo-2026`. These are development accounts created by the service's migration.

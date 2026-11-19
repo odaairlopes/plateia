@@ -16,14 +16,12 @@ export class DomainError extends Error {
   }
 }
 
-export const notFound = (code: string, message: string): DomainError =>
-  new DomainError(code, message, 404);
+export const notFound = (code: string, message: string): DomainError => new DomainError(code, message, 404);
 
 export const conflict = (code: string, message: string, details?: unknown): DomainError =>
   new DomainError(code, message, 409, details);
 
-export const gone = (code: string, message: string): DomainError =>
-  new DomainError(code, message, 410);
+export const gone = (code: string, message: string): DomainError => new DomainError(code, message, 410);
 
 export const unprocessable = (code: string, message: string, details?: unknown): DomainError =>
   new DomainError(code, message, 422, details);

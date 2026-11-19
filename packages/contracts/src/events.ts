@@ -74,10 +74,7 @@ export type DomainEvent = z.infer<typeof domainEventSchema>;
 export type DomainEventType = DomainEvent['type'];
 export type EventOf<T extends DomainEventType> = Extract<DomainEvent, { type: T }>;
 
-export function createEvent<T extends DomainEventType>(
-  type: T,
-  payload: EventOf<T>['payload'],
-): EventOf<T> {
+export function createEvent<T extends DomainEventType>(type: T, payload: EventOf<T>['payload']): EventOf<T> {
   return {
     id: crypto.randomUUID(),
     occurredAt: new Date().toISOString(),

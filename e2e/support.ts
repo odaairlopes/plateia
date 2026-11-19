@@ -11,7 +11,10 @@ export const OTHER_ORGANIZER_EVENT = /Festival Maresia/;
  * anonymous booking session. Config options (baseURL, locale) are copied over
  * because a context created by hand does not inherit them.
  */
-export async function newVisitor(browser: Browser, testInfo: TestInfo): Promise<{ context: BrowserContext; page: Page }> {
+export async function newVisitor(
+  browser: Browser,
+  testInfo: TestInfo,
+): Promise<{ context: BrowserContext; page: Page }> {
   const { baseURL, locale, timezoneId } = testInfo.project.use;
   const context = await browser.newContext({ baseURL, locale, timezoneId });
   return { context, page: await context.newPage() };

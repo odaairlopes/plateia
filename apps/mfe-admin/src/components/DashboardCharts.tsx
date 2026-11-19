@@ -18,7 +18,11 @@ import { NAMESPACE } from '../i18n';
 import { ChartCard } from './Cards';
 import { RecentOrders } from './RecentOrders';
 
-const twoColumns = { display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.4fr) minmax(0, 1fr)' } };
+const twoColumns = {
+  display: 'grid',
+  gap: 2,
+  gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.4fr) minmax(0, 1fr)' },
+};
 
 export function DashboardCharts({ data }: { data: Dashboard }) {
   const { t } = useTranslation(NAMESPACE);
@@ -50,7 +54,11 @@ export function DashboardCharts({ data }: { data: Dashboard }) {
   const occupancyRows = useMemo(
     () =>
       singleEvent
-        ? data.bySection.map((section) => ({ label: localized(section.name), sold: section.soldToDate, capacity: section.capacity }))
+        ? data.bySection.map((section) => ({
+            label: localized(section.name),
+            sold: section.soldToDate,
+            capacity: section.capacity,
+          }))
         : data.byEvent.map((event) => ({ label: event.title, sold: event.soldToDate, capacity: event.capacity })),
     [data, singleEvent, localized],
   );

@@ -12,7 +12,9 @@ export function periodStart(period: DashboardPeriod, now: Date): Date | null {
 
 /** Calendar date (YYYY-MM-DD) of an instant in a given time zone. */
 export function localDate(instant: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant);
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+    instant,
+  );
 }
 
 /** Every calendar day from `first` to `last` inclusive, so days without sales show as zero instead of disappearing. */

@@ -30,8 +30,7 @@ export const copy: Record<Locale, ConfirmationCopy> = {
     preview: (code, date) => `Pedido ${code} confirmado · ${date}`,
     eyebrow: 'Ingresso confirmado',
     greeting: (name) => `Tudo certo, ${name}!`,
-    intro:
-      'Seu pagamento foi aprovado e seus lugares estão garantidos. Guarde este e-mail: ele é o seu ingresso.',
+    intro: 'Seu pagamento foi aprovado e seus lugares estão garantidos. Guarde este e-mail: ele é o seu ingresso.',
     when: 'Quando',
     where: 'Onde',
     doors: 'Abertura dos portões',

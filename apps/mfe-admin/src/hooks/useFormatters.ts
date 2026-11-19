@@ -20,7 +20,12 @@ export function useFormatters(): Formatters & { time: (iso: string) => string; d
     // Calendar dates (YYYY-MM-DD) are formatted at noon UTC, so no time zone can shift the day.
     const atNoon = (isoDate: string) => new Date(`${isoDate}T12:00:00Z`);
     const shortDate = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
-    const longDate = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    const longDate = new Intl.DateTimeFormat(locale, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    });
     const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });
     const dateTime = new Intl.DateTimeFormat(locale, {
       day: '2-digit',

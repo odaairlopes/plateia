@@ -65,7 +65,9 @@ export function OrderConfirmationEmail(view: OrderConfirmationView) {
         <Container style={{ width: '100%', maxWidth: '600px', margin: '0 auto', padding: '0 16px' }}>
           {/* Wordmark */}
           <Section style={{ padding: '8px 4px 20px' }}>
-            <Text style={{ margin: 0, fontSize: '22px', fontWeight: 800, letterSpacing: '-0.03em', color: color.brand }}>
+            <Text
+              style={{ margin: 0, fontSize: '22px', fontWeight: 800, letterSpacing: '-0.03em', color: color.brand }}
+            >
               <span style={{ color: color.accent }}>●</span> plateia
             </Text>
           </Section>
@@ -143,7 +145,9 @@ export function OrderConfirmationEmail(view: OrderConfirmationView) {
             {view.seats.map((seat) => (
               <Row key={seat.label}>
                 <Column>
-                  <Text style={{ margin: '6px 0', fontSize: '15px', fontWeight: 600, color: color.ink }}>{seat.label}</Text>
+                  <Text style={{ margin: '6px 0', fontSize: '15px', fontWeight: 600, color: color.ink }}>
+                    {seat.label}
+                  </Text>
                 </Column>
                 <Column style={{ textAlign: 'right' }}>
                   <Text style={{ margin: '6px 0', fontSize: '15px', color: color.muted }}>{seat.price}</Text>
@@ -155,10 +159,14 @@ export function OrderConfirmationEmail(view: OrderConfirmationView) {
 
             <Row>
               <Column>
-                <Text style={{ margin: '4px 0', fontSize: '15px', fontWeight: 700, color: color.ink }}>{text.total}</Text>
+                <Text style={{ margin: '4px 0', fontSize: '15px', fontWeight: 700, color: color.ink }}>
+                  {text.total}
+                </Text>
               </Column>
               <Column style={{ textAlign: 'right' }}>
-                <Text style={{ margin: '4px 0', fontSize: '20px', fontWeight: 800, color: color.ink }}>{view.total}</Text>
+                <Text style={{ margin: '4px 0', fontSize: '20px', fontWeight: 800, color: color.ink }}>
+                  {view.total}
+                </Text>
               </Column>
             </Row>
             <Row>
@@ -206,7 +214,9 @@ export function OrderConfirmationEmail(view: OrderConfirmationView) {
           </Section>
 
           {/* Before the show */}
-          <Section style={{ backgroundColor: color.brandSoft, borderRadius: '16px', padding: '20px 24px', marginTop: '16px' }}>
+          <Section
+            style={{ backgroundColor: color.brandSoft, borderRadius: '16px', padding: '20px 24px', marginTop: '16px' }}
+          >
             <Heading as="h3" style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700, color: color.ink }}>
               {text.beforeTheShow}
             </Heading>
@@ -222,7 +232,9 @@ export function OrderConfirmationEmail(view: OrderConfirmationView) {
             <Text style={{ margin: '0 0 6px', fontSize: '12px', lineHeight: '18px', color: color.muted }}>
               {text.footerReason}
             </Text>
-            <Text style={{ margin: 0, fontSize: '12px', lineHeight: '18px', color: color.muted }}>{text.footerDemo}</Text>
+            <Text style={{ margin: 0, fontSize: '12px', lineHeight: '18px', color: color.muted }}>
+              {text.footerDemo}
+            </Text>
           </Section>
         </Container>
       </Body>

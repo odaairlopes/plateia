@@ -138,7 +138,11 @@ export function revenueByEventOption(
           : '';
       },
     },
-    xAxis: { type: 'value', ...axisCommon(theme), axisLabel: { color: theme.mutedText, formatter: (v: number) => format.moneyCompact(v) } },
+    xAxis: {
+      type: 'value',
+      ...axisCommon(theme),
+      axisLabel: { color: theme.mutedText, formatter: (v: number) => format.moneyCompact(v) },
+    },
     yAxis: {
       type: 'category',
       data: rows.map((row) => row.title),
@@ -174,7 +178,12 @@ export interface OccupancyRow {
 }
 
 /** Sold vs. still available, stacked to the capacity, with the percentage at the end of each bar. */
-export function occupancyOption(rows: OccupancyRow[], theme: ChartTheme, format: Formatters, labels: Labels): ChartOption {
+export function occupancyOption(
+  rows: OccupancyRow[],
+  theme: ChartTheme,
+  format: Formatters,
+  labels: Labels,
+): ChartOption {
   const ordered = rows.toReversed();
   return {
     ...base(theme),
@@ -266,7 +275,11 @@ export function outcomesOption(
         },
         emphasis: { label: { show: true } },
         labelLine: { show: false },
-        data: keys.map((key) => ({ name: labels.outcomes[key], value: outcomes[key], itemStyle: { color: theme.outcome[key] } })),
+        data: keys.map((key) => ({
+          name: labels.outcomes[key],
+          value: outcomes[key],
+          itemStyle: { color: theme.outcome[key] },
+        })),
       },
     ],
   };
@@ -291,7 +304,13 @@ export function heatmapOption(
         return `<strong>${labels.weekdays[weekday]} · ${hours[hour]}</strong><br/>${format.number(orders)} ${labels.orders.toLowerCase()}`;
       },
     },
-    xAxis: { type: 'category', data: hours, ...axisCommon(theme), splitArea: { show: false }, axisTick: { show: false } },
+    xAxis: {
+      type: 'category',
+      data: hours,
+      ...axisCommon(theme),
+      splitArea: { show: false },
+      axisTick: { show: false },
+    },
     yAxis: {
       type: 'category',
       data: labels.weekdays,

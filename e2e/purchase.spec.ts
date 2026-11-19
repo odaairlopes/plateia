@@ -13,7 +13,10 @@ import {
 } from './support';
 
 test.describe('compra de ingressos', () => {
-  test('pagamento aprovado emite o ingresso e a venda chega ao painel da produtora', async ({ page, browser }, testInfo) => {
+  test('pagamento aprovado emite o ingresso e a venda chega ao painel da produtora', async ({
+    page,
+    browser,
+  }, testInfo) => {
     // The whole journey through the shell and the three remotes, as a visitor would do it.
     await page.goto('/');
     await page.getByRole('link', { name: EVENT_TITLE }).click();

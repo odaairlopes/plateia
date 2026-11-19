@@ -192,9 +192,7 @@ describe('order confirmation email', () => {
 
     await send(order('00000000-0000-4000-8000-000000000001', 'target@example.com'));
     await send(order('00000000-0000-4000-8000-000000000002', 'TARGET@example.com'));
-    await expect(send(order('00000000-0000-4000-8000-000000000003', 'target@example.com'))).resolves.toBe(
-      'suppressed',
-    );
+    await expect(send(order('00000000-0000-4000-8000-000000000003', 'target@example.com'))).resolves.toBe('suppressed');
     // Another address is unaffected.
     await expect(send(order('00000000-0000-4000-8000-000000000004', 'other@example.com'))).resolves.toBe('sent');
 

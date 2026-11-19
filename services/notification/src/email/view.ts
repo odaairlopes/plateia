@@ -1,4 +1,11 @@
-import { parseSeatId, rowLabel, VENUE_TIME_ZONE, type EventDetail, type EventOf, type Locale } from '@plateia/contracts';
+import {
+  parseSeatId,
+  rowLabel,
+  VENUE_TIME_ZONE,
+  type EventDetail,
+  type EventOf,
+  type Locale,
+} from '@plateia/contracts';
 import { copy } from './copy';
 
 /** Everything the template shows, already formatted. The template only lays it out. */
@@ -48,7 +55,11 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
 
 /** Google Calendar "add event" link: works in any browser, no attachment needed. */
 function calendarLink(event: EventDetail, details: string): string {
-  const stamp = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const stamp = (date: Date) =>
+    date
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '');
   const start = new Date(event.startsAt);
   const params = new URLSearchParams({
     action: 'TEMPLATE',

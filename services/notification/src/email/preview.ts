@@ -22,9 +22,7 @@ const sampleEvent: EventDetail = {
   coverHue: 262,
   minPriceCents: 12000,
   description: { pt: '', en: '' },
-  sections: [
-    { id: 'plateia', name: { pt: 'Plateia', en: 'Stalls' }, priceCents: 18000, rows: 8, seatsPerRow: 14 },
-  ],
+  sections: [{ id: 'plateia', name: { pt: 'Plateia', en: 'Stalls' }, priceCents: 18000, rows: 8, seatsPerRow: 14 }],
 };
 
 const outDir = fileURLToPath(new URL('../../.preview/', import.meta.url));
@@ -45,7 +43,9 @@ for (const locale of ['pt', 'en'] satisfies Locale[]) {
   });
   // Browsers do not resolve cid: links, so inline the QR for the preview only.
   const qr = email.attachments.find((attachment) => attachment.cid === QR_CID);
-  const html = qr ? email.html.replaceAll(`cid:${QR_CID}`, `data:image/png;base64,${qr.content.toString('base64')}`) : email.html;
+  const html = qr
+    ? email.html.replaceAll(`cid:${QR_CID}`, `data:image/png;base64,${qr.content.toString('base64')}`)
+    : email.html;
   const file = `${outDir}order-confirmation-${locale}.html`;
   await writeFile(file, html);
   console.log(`${email.subject}\n  → ${file}`);

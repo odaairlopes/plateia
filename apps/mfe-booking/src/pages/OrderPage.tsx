@@ -112,7 +112,11 @@ export default function OrderPage() {
 
   // The outcome arrives asynchronously through the saga, so poll until the
   // order reaches a final state and then stop.
-  const { data: order, error, isPending } = useQuery({
+  const {
+    data: order,
+    error,
+    isPending,
+  } = useQuery({
     ...orderQuery(orderId),
     refetchInterval: (query) => (query.state.data?.status === 'pending_payment' ? POLL_MS : false),
   });

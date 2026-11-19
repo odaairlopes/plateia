@@ -24,7 +24,13 @@ export interface CatalogReader {
 
 /** Writes of the sales projection. Every operation is idempotent. */
 export interface SalesProjection {
-  recordCreated(order: { orderId: string; eventId: string; seatIds: string[]; totalCents: number; at: Date }): Promise<void>;
+  recordCreated(order: {
+    orderId: string;
+    eventId: string;
+    seatIds: string[];
+    totalCents: number;
+    at: Date;
+  }): Promise<void>;
   recordConfirmed(order: {
     orderId: string;
     eventId: string;

@@ -46,10 +46,23 @@ const emptyAggregates: SalesAggregates = {
   recent: [],
 };
 
-const ana: OrganizerAccount = { id: 'a0c4e5d2-1f3b-4c8e-9a7d-2b6f8e1c3d50', name: 'Aurora', email: 'ana@aurora.dev', passwordHash: 'hash:secret' };
-const bruno: OrganizerAccount = { id: 'b1d5f6e3-2a4c-4d9f-8b6e-3c7a9f2d4e61', name: 'Maré', email: 'bruno@marealta.dev', passwordHash: 'hash:other' };
+const ana: OrganizerAccount = {
+  id: 'a0c4e5d2-1f3b-4c8e-9a7d-2b6f8e1c3d50',
+  name: 'Aurora',
+  email: 'ana@aurora.dev',
+  passwordHash: 'hash:secret',
+};
+const bruno: OrganizerAccount = {
+  id: 'b1d5f6e3-2a4c-4d9f-8b6e-3c7a9f2d4e61',
+  name: 'Maré',
+  email: 'bruno@marealta.dev',
+  passwordHash: 'hash:other',
+};
 
-const showA = event('show-a', [['vip', 20000, 2, 10], ['pista', 5000, 4, 20]]); // 20 + 80 seats
+const showA = event('show-a', [
+  ['vip', 20000, 2, 10],
+  ['pista', 5000, 4, 20],
+]); // 20 + 80 seats
 const showB = event('show-b', [['plateia', 8000, 5, 10]]); // 50 seats
 
 const organizers: OrganizerRepository = {
@@ -156,7 +169,11 @@ describe('sign in', () => {
   const login = makeLogin({ organizers, hasher, dummyHash: 'hash:dummy' });
 
   it('signs in with the right password, ignoring email case', async () => {
-    await expect(login(' ANA@aurora.dev ', 'secret')).resolves.toEqual({ id: ana.id, name: 'Aurora', email: 'ana@aurora.dev' });
+    await expect(login(' ANA@aurora.dev ', 'secret')).resolves.toEqual({
+      id: ana.id,
+      name: 'Aurora',
+      email: 'ana@aurora.dev',
+    });
   });
 
   it('answers the same for a wrong password and an unknown email', async () => {

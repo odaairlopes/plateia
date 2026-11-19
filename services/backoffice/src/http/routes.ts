@@ -81,7 +81,11 @@ export function registerBackofficeRoutes(app: App, deps: BackofficeRouteDeps): v
     '/auth/me',
     {
       preHandler: requireSession,
-      schema: { tags: ['auth'], summary: 'The signed-in organizer', response: { 200: organizerSchema, 401: problemSchema } },
+      schema: {
+        tags: ['auth'],
+        summary: 'The signed-in organizer',
+        response: { 200: organizerSchema, 401: problemSchema },
+      },
     },
     async (request, reply) => {
       try {

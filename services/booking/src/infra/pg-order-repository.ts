@@ -63,10 +63,11 @@ function createTransaction(db: Queryable): OrderTransaction {
     },
 
     async save(order) {
-      await db.query(
-        'UPDATE booking.orders SET status = $2, cancel_reason = $3, updated_at = now() WHERE id = $1',
-        [order.id, order.status, order.cancelReason],
-      );
+      await db.query('UPDATE booking.orders SET status = $2, cancel_reason = $3, updated_at = now() WHERE id = $1', [
+        order.id,
+        order.status,
+        order.cancelReason,
+      ]);
     },
 
     enqueue: (event: DomainEvent) => enqueueOutbox(db, SCHEMA, event),
@@ -118,9 +119,7 @@ export function createPgOrderRepository(pool: Pool): OrderRepository {
             'SELECT seat_id FROM booking.tickets WHERE event_id = $1 AND seat_id = ANY($2::text[])',
             [eventId, seatIds],
           )
-        : await pool.query<{ seat_id: string }>('SELECT seat_id FROM booking.tickets WHERE event_id = $1', [
-            eventId,
-          ]);
+        : await pool.query<{ seat_id: string }>('SELECT seat_id FROM booking.tickets WHERE event_id = $1', [eventId]);
       return rows.map((row) => row.seat_id);
     },
 

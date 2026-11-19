@@ -1,4 +1,11 @@
-import { VENUE_TIME_ZONE, type Dashboard, type DashboardQuery, type EventDetail, type EventOf, type Organizer } from '@plateia/contracts';
+import {
+  VENUE_TIME_ZONE,
+  type Dashboard,
+  type DashboardQuery,
+  type EventDetail,
+  type EventOf,
+  type Organizer,
+} from '@plateia/contracts';
 import { DomainError, notFound } from '@plateia/platform';
 import { buildDashboard, periodStart } from '../domain/dashboard';
 import { maskEmail } from '../domain/privacy';

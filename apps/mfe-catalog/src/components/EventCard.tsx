@@ -23,7 +23,10 @@ export function EventCard({ event }: { event: EventSummary }) {
           borderColor: 'primary.main',
           boxShadow: '0 14px 34px -18px var(--mui-palette-primary-main)',
         },
-        '@media (prefers-reduced-motion: reduce)': { transition: 'none', '&:hover, &:focus-within': { transform: 'none' } },
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '&:hover, &:focus-within': { transform: 'none' },
+        },
       }}
     >
       <CardActionArea

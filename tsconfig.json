@@ -1,8 +1,4 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": [
-    "scripts",
-    "tooling",
-    "e2e"
-  ]
+  "include": ["scripts", "tooling", "e2e"]
 }

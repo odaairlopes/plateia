@@ -11,13 +11,13 @@ flowchart LR
   R -->|SMTP| B["Brevo\ne-mails"]
 ```
 
-| Peça | Onde | Por quê |
-|---|---|---|
-| Front (shell e microfronts) | Vercel | Arquivos estáticos em CDN. Um projeto só: o shell na raiz e os remotes em `/mf/*`. |
-| Backend | Render, um contêiner Docker | Os serviços ficam ligados o tempo todo (consumidores da fila, relays do outbox, SSE), o que funções serverless não fazem. O plano gratuito permite um serviço web, então o contêiner roda os 5 serviços como processos separados, atrás de um gateway. |
-| Postgres | Neon | Postgres gerenciado gratuito. |
-| Redis | Redis Cloud | Gratuito, com Streams e scripts Lua. |
-| E-mail | Brevo | SMTP gratuito, 300 e-mails por dia. |
+| Peça                        | Onde                        | Por quê                                                                                                                                                                                                                                                |
+| --------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Front (shell e microfronts) | Vercel                      | Arquivos estáticos em CDN. Um projeto só: o shell na raiz e os remotes em `/mf/*`.                                                                                                                                                                     |
+| Backend                     | Render, um contêiner Docker | Os serviços ficam ligados o tempo todo (consumidores da fila, relays do outbox, SSE), o que funções serverless não fazem. O plano gratuito permite um serviço web, então o contêiner roda os 5 serviços como processos separados, atrás de um gateway. |
+| Postgres                    | Neon                        | Postgres gerenciado gratuito.                                                                                                                                                                                                                          |
+| Redis                       | Redis Cloud                 | Gratuito, com Streams e scripts Lua.                                                                                                                                                                                                                   |
+| E-mail                      | Brevo                       | SMTP gratuito, 300 e-mails por dia.                                                                                                                                                                                                                    |
 
 A Vercel repassa `/api/*` para o Render (veja `vercel.json`). Para o navegador, site e API têm a mesma origem: o cookie de sessão do painel (`SameSite=Strict`) funciona e não é preciso liberar CORS.
 
@@ -58,14 +58,15 @@ Ordem sugerida: banco e Redis, depois o e-mail, depois o backend e por fim o fro
 2. **New → Blueprint**, escolha o repositório. O Render lê o `render.yaml` e cria o serviço `plateia-api`.
 3. Preencha as variáveis pedidas:
 
-   | Variável | Valor |
-   |---|---|
-   | `DATABASE_URL` | do passo 1 |
-   | `REDIS_URL` | do passo 2 |
-   | `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | do passo 3 |
-   | `APP_URL`, `CORS_ORIGINS` | a URL do site na Vercel, por exemplo `https://plateia.vercel.app`. Se ainda não souber, coloque essa e ajuste no passo 6. |
+   | Variável                              | Valor                                                                                                                     |
+   | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+   | `DATABASE_URL`                        | do passo 1                                                                                                                |
+   | `REDIS_URL`                           | do passo 2                                                                                                                |
+   | `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | do passo 3                                                                                                                |
+   | `APP_URL`, `CORS_ORIGINS`             | a URL do site na Vercel, por exemplo `https://plateia.vercel.app`. Se ainda não souber, coloque essa e ajuste no passo 6. |
 
    Os segredos `BACKOFFICE_JWT_SECRET` e `MAIL_RECIPIENT_HASH_SECRET` são gerados pelo próprio Render.
+
 4. O primeiro deploy constrói a imagem (alguns minutos), roda as migrações e grava o histórico de vendas de demonstração.
 5. Anote a URL do serviço. Se não for `https://plateia-api.onrender.com`, atualize a linha `/api/:path*` do `vercel.json` com a URL certa e faça commit.
 6. Teste: `https://<sua-url>.onrender.com/health` deve responder `{"status":"ok"}`.

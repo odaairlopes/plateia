@@ -17,11 +17,7 @@ import {
 import { shutdownTelemetry } from '@plateia/platform/telemetry';
 import { makeCurrentOrganizer, makeGetDashboard, makeLogin, makeSalesProjector } from './application/use-cases';
 import { registerBackofficeRoutes, SESSION_COOKIE } from './http/routes';
-import {
-  createPgOrganizerRepository,
-  createPgSalesProjection,
-  createPgSalesReadModel,
-} from './infra/pg-backoffice';
+import { createPgOrganizerRepository, createPgSalesProjection, createPgSalesReadModel } from './infra/pg-backoffice';
 
 const DEV_JWT_SECRET = 'plateia-dev-only-secret-change-me-in-production';
 
