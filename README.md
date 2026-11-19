@@ -142,7 +142,7 @@ Com o pedido confirmado, o serviço de notificação envia os ingressos por e-ma
 - **Back:** Node.js, Fastify 5, Zod (`fastify-type-provider-zod`), OpenAPI/Swagger, JWT em cookie httpOnly, argon2id
 - **Dados:** PostgreSQL 17, Redis 8 (chaves com TTL, scripts Lua, Streams, Pub/Sub)
 - **Observabilidade:** OpenTelemetry (SDK + Collector), Jaeger, Prometheus, Grafana
-- **Testes:** Vitest
+- **Testes:** Vitest, Playwright
 - **Infra local:** Docker Compose, npm workspaces
 
 ## Como rodar
@@ -174,6 +174,11 @@ Para ver a concorrência, abra o mesmo evento em duas janelas (uma delas anônim
 npm test           # testes de domínio e casos de uso
 npm run typecheck  # TypeScript estrito em todos os workspaces
 npm run smoke      # fluxo de compra de ponta a ponta contra os serviços rodando
+
+# Testes no navegador (Playwright), com os serviços rodando (npm run dev:services):
+npx playwright install chromium  # só na primeira vez
+npm run build:web:prod           # o site exatamente como a Vercel publica
+npm run e2e                      # sobe o gateway e o site e roda os testes
 ```
 
 ## Observabilidade
@@ -271,12 +276,22 @@ As regras de negócio dependem de portas (interfaces), não de Postgres ou Redis
 
 O teste de fumaça (`scripts/smoke.ts`) cobre o que os testes unitários não alcançam: Postgres e Redis reais, os scripts Lua das reservas, o relay do outbox e a saga atravessando dois serviços. Ele compra assentos, confirma que um segundo visitante não consegue reservá-los, que o checkout repetido não duplica o pedido, que o pagamento recusado libera o assento, que um pedido não aparece para outra sessão, que o e-mail com os ingressos chega com o código do pedido e o QR code, e que a venda aparece no painel da produtora dona do evento, e só no dela.
 
+Os testes no navegador (`e2e/`, Playwright) rodam contra o build de produção do site, servido como na Vercel (`/api` repassado ao gateway), com os quatro micro frontends carregados por Module Federation:
+
+- **Corrida entre dois navegadores:** dois visitantes clicam no mesmo assento e reservam ao mesmo tempo; exatamente um leva. As atualizações ao vivo ficam cortadas de propósito nesse teste, para que os dois pedidos cheguem de fato ao servidor e a disputa aconteça lá.
+- **Mapa ao vivo:** a reserva de um visitante aparece para o outro, sem recarregar, e some quando é liberada.
+- **Compra completa:** da lista de eventos ao ingresso emitido, passando pelo pagamento assíncrono, e a venda chegando ao painel da produtora. O pagamento recusado devolve o assento à venda.
+- **Painel:** senha errada não entra, a produtora só vê os próprios eventos, o cookie é `httpOnly` e `SameSite=Strict`, e sair encerra a sessão no servidor.
+- **Acessibilidade:** o mapa é uma parada de Tab só, as setas percorrem os assentos e o teclado seleciona.
+
+Os assentos são escolhidos entre os livres no momento, então a suíte roda várias vezes contra o mesmo banco.
+
 ### Integração contínua
 
 O GitHub Actions roda em todo push e pull request:
 
 1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e o build do site exatamente como a Vercel publica.
-2. **Fumaça na imagem de produção**, depois da qualidade: constrói a mesma imagem Docker que o Render usa, sobe com 512 MB de memória contra Postgres, Redis e Mailpit reais e roda `npm run smoke` pelo gateway. Um Dockerfile quebrado falha no PR, não em produção.
+2. **Fumaça na imagem de produção**, depois da qualidade: constrói a mesma imagem Docker que o Render usa, sobe com 512 MB de memória contra Postgres, Redis e Mailpit reais e roda `npm run smoke` pelo gateway. Em seguida, os testes do Playwright rodam contra essa mesma imagem; se falharem, o relatório com traces e capturas de tela fica disponível como artefato. Um Dockerfile quebrado falha no PR, não em produção.
 
 O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry e os singletons compartilhados entre os micro frontends).
 
@@ -289,13 +304,14 @@ O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo
 
 ## Próximos passos
 
-- [ ] Testes de integração com Testcontainers e E2E com Playwright (incluindo corrida entre dois navegadores)
+- [x] Testes E2E com Playwright, incluindo a corrida entre dois navegadores
+- [ ] Testes de integração dos adaptadores (Postgres, Redis) com Testcontainers
 - [ ] Ambiente de homologação por pull request (preview na Vercel com backend próprio)
 - [ ] Autenticação e área "meus ingressos"
 - [ ] Replicar o catálogo no booking por eventos, removendo a chamada síncrona
 - [ ] Traces a partir do navegador e alertas no Prometheus
 - [ ] Fila de espera virtual para aberturas de venda com alta demanda
-- [ ] Antes de usar um provedor de e-mail real em produção: limite de envios por destinatário e confirmação do endereço, para o checkout não virar uma forma de mandar spam
+- [ ] Confirmação do endereço de e-mail antes do envio (o limite de envios por destinatário e por dia já existe), para o checkout não virar uma forma de mandar spam
 
 ## Licença
 

@@ -24,18 +24,21 @@
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.ts",
+    "e2e": "playwright test -c e2e",
+    "e2e:ui": "playwright test -c e2e --ui",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "build:backend": "node deploy/backend/build.mjs",
     "build:web:prod": "node deploy/web/build.mjs"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6",
-    "concurrently": "^10.0.7",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "vitest": "^5.1.0",
     "@plateia/contracts": "*",
     "@plateia/platform": "*",
-    "esbuild": "^0.28.2"
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "concurrently": "^10.0.7",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

@@ -21,7 +21,7 @@ import { dashboardPeriodSchema, type DashboardPeriod, type Organizer } from '@pl
 import { usePageTitle } from '@plateia/web-kit';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { dashboardQuery, logout } from '../api';
+import { dashboardQuery, logout, meKey } from '../api';
 import { useDashboardFilters } from '../hooks/useDashboardFilters';
 import { useFormatters } from '../hooks/useFormatters';
 import { NAMESPACE } from '../i18n';
@@ -44,8 +44,15 @@ export function DashboardView({ organizer }: { organizer: Organizer }) {
 
   const signOut = useMutation({
     mutationFn: logout,
-    // Drop every cached admin response, so nothing is left visible after signing out.
-    onSettled: () => queryClient.removeQueries({ queryKey: ['admin'] }),
+    onSettled: async () => {
+      // Reset (not just remove) "who is signed in": the mounted AdminApp observer
+      // re-renders, asks the API again, gets a 401 and shows the login. Removing
+      // it would leave that observer holding the old organizer, and this view
+      // on screen refetching the dashboard into an error.
+      await queryClient.resetQueries({ queryKey: meKey });
+      // Then drop the sales data, so nothing is left in memory after signing out.
+      queryClient.removeQueries({ queryKey: ['admin', 'dashboard'] });
+    },
   });
 
   const data = dashboard.data;

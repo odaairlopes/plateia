@@ -12,3 +12,5 @@ coverage/
 .preview/
 deploy-dist/
 dist-web/
+playwright-report/
+test-results/
