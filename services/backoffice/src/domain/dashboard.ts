@@ -87,7 +87,7 @@ export function buildDashboard(input: BuildDashboardInput): Dashboard {
       soldToDate: bySection.filter((row) => row.eventId === event.id).reduce((sum, row) => sum + row.soldToDate, 0),
       capacity: capacityOf(event),
     }))
-    .sort((a, b) => b.revenueCents - a.revenueCents);
+    .toSorted((a, b) => b.revenueCents - a.revenueCents);
 
   const capacity = byEvent.reduce((sum, event) => sum + event.capacity, 0);
   const soldToDate = byEvent.reduce((sum, event) => sum + event.soldToDate, 0);
@@ -105,7 +105,7 @@ export function buildDashboard(input: BuildDashboardInput): Dashboard {
     organizer: input.organizer,
     events: input.ownedEvents
       .map((event) => ({ id: event.id, title: event.title, startsAt: event.startsAt }))
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
+      .toSorted((a, b) => a.startsAt.localeCompare(b.startsAt)),
     scope: {
       eventId: input.selectedEventId,
       period,

@@ -1,4 +1,3 @@
-import '../i18n';
 import { Alert, AlertTitle, Box, Button, Chip, Skeleton, Stack, Typography } from '@mui/material';
 import type { EventCategory } from '@plateia/contracts';
 import { usePageTitle } from '@plateia/web-kit';

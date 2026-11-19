@@ -236,6 +236,8 @@ export function createRedisEventBus(redisUrl: string, logger: BusLogger): EventB
       let lastClaim = 0;
 
       const loop = (async () => {
+        // `running` is flipped by stop(), outside this loop.
+        // oxlint-disable-next-line no-unmodified-loop-condition
         while (running) {
           try {
             if (Date.now() - lastClaim > CLAIM_IDLE_MS) {

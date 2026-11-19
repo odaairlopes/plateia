@@ -1,4 +1,3 @@
-import '../i18n';
 import { Alert, Box, Button, Chip, Divider, Link, Paper, Skeleton, Stack, Typography } from '@mui/material';
 import { MAX_SEATS_PER_HOLD, parseSeatId, type Section } from '@plateia/contracts';
 import { formatEventDate, formatMoney, isApiError, useLocale, usePageTitle } from '@plateia/web-kit';

@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 const remaining = (expiresAt: string) => Math.max(0, new Date(expiresAt).getTime() - Date.now());
 
 /** Milliseconds left until `expiresAt`, updated every second. Calls `onExpire` once at zero. */
 export function useCountdown(expiresAt: string, onExpire: () => void): number {
   const [remainingMs, setRemainingMs] = useState(() => remaining(expiresAt));
-  const onExpireRef = useRef(onExpire);
-  onExpireRef.current = onExpire;
+  // Always calls the latest onExpire without restarting the interval when the
+  // parent passes a new function (writing a ref during render is not allowed).
+  const expire = useEffectEvent(onExpire);
 
   useEffect(() => {
     const tick = () => {
@@ -14,7 +15,7 @@ export function useCountdown(expiresAt: string, onExpire: () => void): number {
       setRemainingMs(left);
       if (left === 0) {
         clearInterval(timer);
-        onExpireRef.current();
+        expire();
       }
     };
     const timer = setInterval(tick, 1000);

@@ -42,7 +42,7 @@ export async function withTransaction<T>(pool: Pool, work: (client: PoolClient) 
  */
 export async function runMigrations(pool: Pool, schemaName: string, directory: string): Promise<string[]> {
   const schema = assertSchemaName(schemaName);
-  const files = (await readdir(directory)).filter((file) => file.endsWith('.sql')).sort();
+  const files = (await readdir(directory)).filter((file) => file.endsWith('.sql')).toSorted();
   const applied: string[] = [];
 
   await withTransaction(pool, async (client) => {

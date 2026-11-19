@@ -67,7 +67,7 @@ async function fileFor(urlPath) {
   }
 }
 
-const server = http.createServer(async (request, response) => {
+async function handle(request, response) {
   const urlPath = (request.url ?? '/').split('?')[0] ?? '/';
   if (urlPath.startsWith('/api/')) return proxy(request, response);
 
@@ -77,6 +77,15 @@ const server = http.createServer(async (request, response) => {
     'cache-control': 'no-cache',
   });
   createReadStream(file).pipe(response);
+}
+
+// node:http ignores the promise a handler returns: a rejection would go unhandled.
+const server = http.createServer((request, response) => {
+  handle(request, response).catch((error) => {
+    console.error(error);
+    if (!response.headersSent) response.writeHead(500, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ code: 'INTERNAL', message: 'Unexpected error' }));
+  });
 });
 
 server.listen(port, '127.0.0.1', () => console.log(`e2e site on http://localhost:${port} -> api ${api.origin}`));

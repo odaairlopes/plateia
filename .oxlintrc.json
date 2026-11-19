@@ -1,0 +1,84 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Oxlint instead of ESLint: typescript-eslint needs the TypeScript JS API,
+  // which TypeScript 7 (the native compiler used here) no longer ships.
+  // Oxlint runs the same rule sets (typescript, react, jsx-a11y, import...) and
+  // its type-aware rules run on tsgo, i.e. TypeScript 7 itself.
+  "plugins": ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y", "vitest", "promise", "node"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "options": {
+    "typeAware": true
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "dist-web/**",
+    "deploy-dist/**",
+    "playwright-report/**",
+    "test-results/**",
+    "**/.__mf__temp/**"
+  ],
+  "rules": {
+    // --- Turned on beyond the categories ---
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "eqeqeq": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+
+    // --- Turned off, on purpose ---
+    // The new JSX transform: React does not need to be in scope.
+    "react/react-in-jsx-scope": "off",
+    // Side-effect imports are deliberate: telemetry must load before anything
+    // else, and each micro frontend registers its translations on import.
+    "import/no-unassigned-import": "off",
+    // pg and nodemailer are CommonJS: from ESM, `pg.Pool` is the reliable form.
+    "import/no-named-as-default-member": "off",
+    // Sequential awaits in loops are intentional: polling, relays, ordered steps.
+    "no-await-in-loop": "off",
+    // In-memory fakes and Fastify handlers implement async contracts without awaiting.
+    "typescript/require-await": "off",
+    // An effect returns its cleanup on one path and nothing on an early exit.
+    "typescript/consistent-return": "off",
+    // Fastify supports async handlers (this rule targets Express).
+    "oxc/no-async-endpoint-handlers": "off",
+    // A .then() used for a side effect (logging) does not need to return a value.
+    "promise/always-return": "off",
+    // Small helpers next to the tests that use them read better than hoisted ones.
+    "unicorn/consistent-function-scoping": "off",
+    // ARIA roles on MUI layout components (role="status", role="group") are the
+    // accessible pattern here; the E2E tests select elements by these roles.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Casts at I/O boundaries (JSON.parse, response.json()). Next step: parse
+    // them with the Zod schemas from @plateia/contracts and turn this back on.
+    "typescript/no-unsafe-type-assertion": "off"
+  },
+  "overrides": [
+    {
+      "files": ["apps/**", "packages/web-kit/**"],
+      "env": { "browser": true, "node": false }
+    },
+    {
+      // Ambient module declarations cannot use top-level imports.
+      "files": ["**/*.d.ts"],
+      "rules": { "typescript/consistent-type-imports": "off" }
+    }
+  ]
+}

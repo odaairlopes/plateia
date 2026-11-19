@@ -43,7 +43,7 @@ function shutdown(code) {
   stopping = true;
   for (const child of children) child.kill('SIGTERM');
   setTimeout(() => process.exit(code), 8000).unref();
-  Promise.all(children.map((child) => new Promise((resolve) => child.once('exit', resolve)))).then(() =>
+  void Promise.all(children.map((child) => new Promise((resolve) => child.once('exit', resolve)))).then(() =>
     process.exit(code),
   );
 }

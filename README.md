@@ -143,6 +143,7 @@ Com o pedido confirmado, o serviço de notificação envia os ingressos por e-ma
 - **Dados:** PostgreSQL 17, Redis 8 (chaves com TTL, scripts Lua, Streams, Pub/Sub)
 - **Observabilidade:** OpenTelemetry (SDK + Collector), Jaeger, Prometheus, Grafana
 - **Testes:** Vitest, Playwright
+- **Qualidade:** Oxlint com regras que usam tipos (React, hooks, acessibilidade, promessas)
 - **Infra local:** Docker Compose, npm workspaces
 
 ## Como rodar
@@ -173,6 +174,7 @@ Para ver a concorrência, abra o mesmo evento em duas janelas (uma delas anônim
 ```bash
 npm test           # testes de domínio e casos de uso
 npm run typecheck  # TypeScript estrito em todos os workspaces
+npm run lint       # Oxlint, com regras que usam informação de tipos
 npm run smoke      # fluxo de compra de ponta a ponta contra os serviços rodando
 
 # Testes no navegador (Playwright), com os serviços rodando (npm run dev:services):
@@ -290,10 +292,12 @@ Os assentos são escolhidos entre os livres no momento, então a suíte roda vá
 
 O GitHub Actions roda em todo push e pull request:
 
-1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, testes unitários e o build do site exatamente como a Vercel publica.
+1. **Qualidade**, em Node 22 (mínimo suportado) e 24 (LTS): typecheck estrito, lint, testes unitários e o build do site exatamente como a Vercel publica.
 2. **Fumaça na imagem de produção**, depois da qualidade: constrói a mesma imagem Docker que o Render usa, sobe com 512 MB de memória contra Postgres, Redis e Mailpit reais e roda `npm run smoke` pelo gateway. Em seguida, os testes do Playwright rodam contra essa mesma imagem; se falharem, o relatório com traces e capturas de tela fica disponível como artefato. Um Dockerfile quebrado falha no PR, não em produção.
 
-O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry e os singletons compartilhados entre os micro frontends).
+**Por que Oxlint e não ESLint:** o projeto usa o TypeScript 7, o compilador nativo, que não traz mais a API JavaScript de que o `typescript-eslint` depende. O Oxlint roda os mesmos conjuntos de regras (TypeScript, React e hooks, jsx-a11y, import, promise) e suas regras com tipos, como promessa não tratada, rodam sobre o próprio TypeScript 7. As regras desligadas de propósito estão justificadas em [`.oxlintrc.json`](./.oxlintrc.json).
+
+O workflow tem permissão só de leitura, cancela execuções obsoletas do mesmo branch e fixa as actions por SHA de commit (uma tag pode ser movida; um SHA, não). O Dependabot atualiza dependências e actions toda semana, agrupando os pacotes que precisam andar juntos (OpenTelemetry, os singletons compartilhados entre os micro frontends e o Oxlint com seu motor de tipos).
 
 ## Acessibilidade
 

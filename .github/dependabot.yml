@@ -26,6 +26,9 @@ updates:
           - i18next
           - react-i18next
           - "@module-federation/*"
+      # oxlint peers on a minimum oxlint-tsgolint (the type-aware engine).
+      oxlint:
+        patterns: ["oxlint", "oxlint-tsgolint"]
       minor-and-patch:
         update-types: [minor, patch]
 

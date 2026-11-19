@@ -98,6 +98,8 @@ export function Layout() {
     }
     window.scrollTo({ top: 0 });
     mainRef.current?.focus({ preventScroll: true });
+    // Runs on every navigation by design: pathname is the trigger, not an input.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [pathname]);
 
   return (

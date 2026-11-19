@@ -70,6 +70,8 @@ export function startOutboxRelay(
   }
 
   const loop = (async () => {
+    // `running` is flipped by stop(), outside this loop.
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (running) {
       try {
         const published = await drain();

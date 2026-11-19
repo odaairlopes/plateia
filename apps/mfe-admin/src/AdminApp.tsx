@@ -1,4 +1,3 @@
-import './i18n';
 import { Box, LinearProgress } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';

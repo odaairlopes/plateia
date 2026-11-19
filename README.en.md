@@ -143,6 +143,7 @@ Once the order is confirmed, the notification service emails the tickets, with a
 - **Data:** PostgreSQL 17, Redis 8 (keys with TTL, Lua scripts, Streams, Pub/Sub)
 - **Observability:** OpenTelemetry (SDK + Collector), Jaeger, Prometheus, Grafana
 - **Tests:** Vitest, Playwright
+- **Quality:** Oxlint with type-aware rules (React, hooks, accessibility, promises)
 - **Local infra:** Docker Compose, npm workspaces
 
 ## Running it
@@ -173,6 +174,7 @@ To see the concurrency, open the same event in two windows (one of them private)
 ```bash
 npm test           # domain and use case tests
 npm run typecheck  # strict TypeScript across all workspaces
+npm run lint       # Oxlint, with rules that use type information
 npm run smoke      # end-to-end purchase flow against the running services
 
 # Browser tests (Playwright), with the services running (npm run dev:services):
@@ -290,10 +292,12 @@ Seats are picked from those free at the moment, so the suite runs again and agai
 
 GitHub Actions runs on every push and pull request:
 
-1. **Quality**, on Node 22 (lowest supported) and 24 (LTS): strict typecheck, unit tests and the site build exactly as Vercel publishes it.
+1. **Quality**, on Node 22 (lowest supported) and 24 (LTS): strict typecheck, lint, unit tests and the site build exactly as Vercel publishes it.
 2. **Smoke on the production image**, after quality: builds the same Docker image Render uses, runs it with 512 MB of memory against real Postgres, Redis and Mailpit, and runs `npm run smoke` through the gateway. Then the Playwright tests run against that same image; if they fail, the report with traces and screenshots is kept as an artifact. A broken Dockerfile fails in the PR, not in production.
 
-The workflow has read-only permissions, cancels superseded runs on the same branch and pins actions to commit SHAs (a tag can be moved; a SHA cannot). Dependabot updates dependencies and actions weekly, grouping packages that must move together (OpenTelemetry, and the singletons shared across micro frontends).
+**Why Oxlint and not ESLint:** the project uses TypeScript 7, the native compiler, which no longer ships the JavaScript API `typescript-eslint` depends on. Oxlint runs the same rule sets (TypeScript, React and hooks, jsx-a11y, import, promise), and its type-aware rules, such as unhandled promises, run on TypeScript 7 itself. The rules turned off on purpose are justified in [`.oxlintrc.json`](./.oxlintrc.json).
+
+The workflow has read-only permissions, cancels superseded runs on the same branch and pins actions to commit SHAs (a tag can be moved; a SHA cannot). Dependabot updates dependencies and actions weekly, grouping packages that must move together (OpenTelemetry, the singletons shared across micro frontends, and Oxlint with its type engine).
 
 ## Accessibility
 

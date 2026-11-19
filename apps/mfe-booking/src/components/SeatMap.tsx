@@ -128,7 +128,7 @@ function SectionGrid({ section, statusOf, onToggle, readOnly }: SectionGridProps
               >
                 {rowLabel(row)}
               </Typography>
-              {Array.from({ length: section.seatsPerRow }, (_, seatIndex) => {
+              {Array.from({ length: section.seatsPerRow }, (_seat, seatIndex) => {
                 const number = seatIndex + 1;
                 const seatId = formatSeatId({ sectionId: section.id, row, number });
                 const status = statusOf(seatId);

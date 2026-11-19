@@ -22,6 +22,7 @@
     "dev:web": "concurrently -k -n mfe-catalog,mfe-booking,mfe-admin,shell -c cyan,green,magentaBright,white \"npm run dev -w @plateia/mfe-catalog\" \"npm run dev -w @plateia/mfe-booking\" \"npm run dev -w @plateia/mfe-admin\" \"npm run dev -w @plateia/shell\"",
     "build:web": "npm run build -w @plateia/mfe-catalog -w @plateia/mfe-booking -w @plateia/mfe-admin -w @plateia/shell",
     "typecheck": "tsc -p tsconfig.json && npm run typecheck --workspaces --if-present",
+    "lint": "oxlint --deny-warnings",
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.ts",
     "e2e": "playwright test -c e2e",
@@ -37,6 +38,8 @@
     "@types/node": "^26.6.6",
     "concurrently": "^10.0.7",
     "esbuild": "^0.28.2",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2007",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"

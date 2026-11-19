@@ -43,6 +43,6 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
   if (response.status === 204) return undefined as T;
 
   const payload: unknown = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(response.status, (payload ?? {}) as Partial<Problem>);
+  if (!response.ok) throw new ApiError(response.status, payload ?? {});
   return payload as T;
 }

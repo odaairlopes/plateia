@@ -1,5 +1,5 @@
 import { Box, LinearProgress, Stack, Typography } from '@mui/material';
-import { useRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatCountdown, useCountdown } from '../hooks/useCountdown';
 import { NAMESPACE } from '../i18n';
@@ -15,7 +15,7 @@ export function HoldTimer({ expiresAt, onExpire }: HoldTimerProps) {
   const { t } = useTranslation(NAMESPACE);
   const remainingMs = useCountdown(expiresAt, onExpire);
   // The first reading is the full duration; it sizes the progress bar.
-  const totalMs = useRef(Math.max(remainingMs, 1)).current;
+  const [totalMs] = useState(() => Math.max(remainingMs, 1));
   const urgent = remainingMs <= URGENT_MS;
   const time = formatCountdown(remainingMs);
 

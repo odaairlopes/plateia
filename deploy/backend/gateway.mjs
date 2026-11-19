@@ -56,7 +56,7 @@ function proxy(request, response, port, path) {
   request.pipe(upstream);
 }
 
-const server = http.createServer(async (request, response) => {
+async function handle(request, response) {
   const url = request.url ?? '/';
   if (url === '/health' || url === '/') {
     const ready = await allReady();
@@ -72,6 +72,15 @@ const server = http.createServer(async (request, response) => {
   }
   const query = url.includes('?') ? url.slice(url.indexOf('?')) : '';
   proxy(request, response, routes[match[1]], `${match[2] ?? '/'}${query}`);
+}
+
+// node:http ignores the promise a handler returns: a rejection would go unhandled.
+const server = http.createServer((request, response) => {
+  handle(request, response).catch((error) => {
+    console.error(error);
+    if (!response.headersSent) response.writeHead(500, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ code: 'INTERNAL', message: 'Unexpected error' }));
+  });
 });
 
 // SSE connections stay open for minutes: no request or keep-alive timeout.

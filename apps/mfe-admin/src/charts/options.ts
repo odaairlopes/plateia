@@ -27,8 +27,12 @@ export interface Labels {
   weekdays: string[];
 }
 
-/** Settings shared by every chart: fonts, colors, tooltip look, accessibility. */
-function base(theme: ChartTheme): ChartOption {
+/**
+ * Settings shared by every chart: fonts, colors, tooltip look, accessibility.
+ * The return type is inferred (checked with `satisfies`): typed as ChartOption,
+ * `tooltip` would widen to "object or array" and could not be spread safely.
+ */
+function base(theme: ChartTheme) {
   return {
     animation: theme.animate,
     textStyle: { fontFamily: theme.fontFamily, color: theme.text },
@@ -39,7 +43,7 @@ function base(theme: ChartTheme): ChartOption {
       textStyle: { color: theme.text, fontFamily: theme.fontFamily },
       confine: true,
     },
-  };
+  } satisfies ChartOption;
 }
 
 const axisCommon = (theme: ChartTheme) => ({
@@ -120,7 +124,7 @@ export function revenueByEventOption(
   labels: Labels,
 ): ChartOption {
   // Highest revenue on top: ECharts draws the category axis bottom-up.
-  const rows = [...events].reverse();
+  const rows = events.toReversed();
   return {
     ...base(theme),
     grid: { left: 8, right: 72, top: 8, bottom: 8, containLabel: true },
@@ -171,7 +175,7 @@ export interface OccupancyRow {
 
 /** Sold vs. still available, stacked to the capacity, with the percentage at the end of each bar. */
 export function occupancyOption(rows: OccupancyRow[], theme: ChartTheme, format: Formatters, labels: Labels): ChartOption {
-  const ordered = [...rows].reverse();
+  const ordered = rows.toReversed();
   return {
     ...base(theme),
     grid: { left: 8, right: 56, top: 32, bottom: 8, containLabel: true },
