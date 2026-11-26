@@ -12,8 +12,8 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@hookform/resolvers": "^7.0.6",
-    "@mui/material": "^9.5.0",
+    "@hookform/resolvers": "^7.0.8",
+    "@mui/material": "^9.6.0",
     "@plateia/contracts": "*",
     "@plateia/web-kit": "*",
     "@tanstack/react-query": "^5.107.1",
