@@ -41,7 +41,7 @@
     "concurrently": "^10.0.7",
     "esbuild": "^0.28.2",
     "oxlint": "^1.94.0",
-    "oxlint-tsgolint": "^7.0.2007",
+    "oxlint-tsgolint": "^7.0.2008",
     "prettier": "^3.10.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
